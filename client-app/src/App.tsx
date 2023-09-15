@@ -1,9 +1,7 @@
+import { Outlet } from "react-router-dom";
+
 const App = () => {
-  return (
-    <div className="App">
-      <h1>QR Code</h1>
-    </div>
-  );
+  return <Outlet />;
 };
 
 export default App;

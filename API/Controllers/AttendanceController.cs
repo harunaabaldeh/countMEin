@@ -12,14 +12,14 @@ using static Google.Apis.Auth.GoogleJsonWebSignature;
 
 namespace API.Controllers;
 
-public class AttendancyController : BaseApiController
+public class AttendanceController : BaseApiController
 {
     private readonly ApplicationDbContext _context;
     private readonly IConfiguration _config;
     private readonly UserManager<AppUser> _userManager;
     private readonly TokenService _tokenService;
 
-    public AttendancyController(ApplicationDbContext context, IConfiguration config, UserManager<AppUser> userManager, TokenService tokenService)
+    public AttendanceController(ApplicationDbContext context, IConfiguration config, UserManager<AppUser> userManager, TokenService tokenService)
     {
         _tokenService = tokenService;
         _userManager = userManager;
@@ -27,71 +27,71 @@ public class AttendancyController : BaseApiController
         _config = config;
     }
 
-    //generate attendancy link: the link will be sent to the students to mark their attendancy
+    //generate attendance link: the link will be sent to the students to mark their attendance
     [Authorize]
-    [HttpPost("generateAttendancyLink")]
-    public async Task<ActionResult<AttendantLinkDto>> GenerateAttendancyLink(GenerateLinkDto generateLinkDto)
+    [HttpPost("generateAttendanceLink")]
+    public async Task<ActionResult<AttendantLinkDto>> GenerateAttendanceLink(GenerateLinkDto generateLinkDto)
     {
         var user = await _userManager.FindByEmailAsync(User.FindFirstValue(ClaimTypes.Email));
 
-        //create a new attendancy link
-        var attendancyLink = new AttendantLink
+        //create a new attendance link
+        var attendanceLink = new AttendantLink
         {
             SessionName = generateLinkDto.SessionName,
             SessionExpiresAt = DateTime.UtcNow.AddMinutes(30),
             Host = user!,
         };
 
-        //add the attendancy link to the database
-        _context.AttendantLinks.Add(attendancyLink);
+        //add the attendance link to the database
+        _context.AttendantLinks.Add(attendanceLink);
         await _context.SaveChangesAsync();
 
-        var token = await _tokenService.CreateAttendancyLinkToken(attendancyLink);
+        var token = await _tokenService.CreateAttendanceLinkToken(attendanceLink);
 
-        //create a new attendancy link dto
+        //create a new attendance link dto
         var attendantLinkDto = new AttendantLinkDto
         {
-            SessionId = attendancyLink.Id.ToString(),
-            SessionName = attendancyLink.SessionName,
-            SessionExpiresAt = attendancyLink.SessionExpiresAt,
-            HostName = attendancyLink.Host.DisplayName,
+            SessionId = attendanceLink.Id.ToString(),
+            SessionName = attendanceLink.SessionName,
+            SessionExpiresAt = attendanceLink.SessionExpiresAt,
+            HostName = attendanceLink.Host.DisplayName,
             Token = token
         };
 
         return attendantLinkDto;
     }
 
-    //get the attendancy links of the current user
+    //get the attendance links of the current user
     [Authorize]
-    [HttpGet("getAttendancyLinks")]
-    public async Task<ActionResult<List<AttendantLinkDto>>> GetAttendancyLinks()
+    [HttpGet("getAttendanceLinks")]
+    public async Task<ActionResult<List<AttendantLinkDto>>> GetAttendanceLinks()
     {
         var user = await _userManager.FindByEmailAsync(User.FindFirstValue(ClaimTypes.Email));
 
-        var attendancyLinks = await _context.AttendantLinks
+        var attendanceLinks = await _context.AttendantLinks
             .Where(x => x.Host == user)
             .ToListAsync();
 
-        var attendancyLinksDto = new List<AttendantLinkDto>();
+        var attendanceLinksDto = new List<AttendantLinkDto>();
 
-        foreach (var attendancyLink in attendancyLinks)
+        foreach (var attendanceLink in attendanceLinks)
         {
 
-            var attendancyLinkDto = new AttendantLinkDto
+            var attendanceLinkDto = new AttendantLinkDto
             {
-                SessionId = attendancyLink.Id.ToString(),
-                SessionName = attendancyLink.SessionName,
-                SessionExpiresAt = attendancyLink.SessionExpiresAt,
-                HostName = attendancyLink.Host.DisplayName,
+                SessionId = attendanceLink.Id.ToString(),
+                SessionName = attendanceLink.SessionName,
+                SessionExpiresAt = attendanceLink.SessionExpiresAt,
+                HostName = attendanceLink.Host.DisplayName,
             };
 
-            attendancyLinksDto.Add(attendancyLinkDto);
+            attendanceLinksDto.Add(attendanceLinkDto);
         }
 
-        return attendancyLinksDto;
+        return attendanceLinksDto;
     }
 
-    //Create a new attendant for the attendancy link
+    //Create a new attendant for the attendance link
     [Authorize]
     [HttpPost("createAttendant/{sessionId}")]
     public async Task<ActionResult<AttendantDto>> CreateAttendant(string sessionId, string accessToken, string linkToken)
@@ -110,7 +110,7 @@ public class AttendancyController : BaseApiController
             return BadRequest("Session expired");
         }
 
-        var tokenValidated = await _tokenService.ValidateAttendancyLinkToken(linkToken);
+        var tokenValidated = await _tokenService.ValidateAttendanceLinkToken(linkToken);
         if (!tokenValidated) return BadRequest("Invalid token");
 
 
@@ -129,7 +129,7 @@ public class AttendancyController : BaseApiController
             return BadRequest("Invalid access token");
         }
 
-        //check if the user already exists in the attendancy link
+        //check if the user already exists in the attendance link
         var attendant = await _context.Attendants
             .FirstOrDefaultAsync(x => x.Email == payload.Email && x.AttendantLink == attendantLink);
 
@@ -165,7 +165,7 @@ public class AttendancyController : BaseApiController
         return attendantDto;
     }
 
-    //get the attendants of the attendancy link
+    //get the attendants of the attendance link
     [Authorize]
     [HttpGet("getAttendants/{sessionId}")]
     public async Task<ActionResult<List<AttendantDto>>> GetAttendants(string sessionId)

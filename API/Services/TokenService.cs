@@ -54,8 +54,8 @@ public class TokenService
         return tokenHandler.WriteToken(token);
     }
 
-    //create a token for the attendancy link
-    public async Task<string> CreateAttendancyLinkToken(AttendantLink attendantLink)
+    //create a token for the attendance link
+    public async Task<string> CreateAttendanceLinkToken(AttendantLink attendantLink)
     {
         var claims = new List<Claim>
         {
@@ -80,8 +80,8 @@ public class TokenService
         return tokenHandler.WriteToken(token);
     }
 
-    //validate the attendancy link token
-    public async Task<bool> ValidateAttendancyLinkToken(string token)
+    //validate the attendance link token
+    public async Task<bool> ValidateAttendanceLinkToken(string token)
     {
         try
         {
