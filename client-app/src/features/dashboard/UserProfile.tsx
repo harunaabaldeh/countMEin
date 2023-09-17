@@ -1,16 +1,14 @@
-import { Link, NavLink, Outlet } from "react-router-dom";
-import SessionHistory from "./SessionHistory";
-import RecentSession from "./CurrentSession";
-import GenerateQRCodeForm from "./GenerateQRCodeForm";
+import { NavLink, Outlet, useNavigate } from "react-router-dom";
 
 function UserProfile() {
+  const navigate = useNavigate();
   return (
     <div className="container mx-auto">
       <div className="bg-white relative rounded-lg w-full md:w-11/12 mx-auto">
         <div className="w-full md:w-11/12 mx-auto flex justify-center items-center">
           <div className="flex justify-center">
             <img
-              src="../../../src/assets/images/fabala.jpg"
+              src="/images/fabala.jpg"
               alt=""
               className="rounded-full mx-auto w-20 h-20 shadow-md border-4 border-white transition duration-200 transform hover:scale-110"
             />
@@ -19,8 +17,14 @@ function UserProfile() {
             <h1 className="font-bold text-center text-xl text-gray-900">
               Fabala Dibbasey
             </h1>
-            <p className="text-center text-sm text-gray-400 font-medium">
-              Software Engineer
+            <p
+              onClick={() => {
+                localStorage.removeItem("user");
+                navigate("/");
+              }}
+              className="text-center text-slate-500 text-sm cursor-pointer hover:text-red-600 transition-colors leading-5 tracking-widest "
+            >
+              Logout
             </p>
           </div>
         </div>

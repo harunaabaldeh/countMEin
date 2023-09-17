@@ -42,7 +42,9 @@ function SessionDetails() {
         </div>
       </div>
 
-      <AppTableHeader />
+      <div className="w-full md:w-11/12 mx-auto">
+        <AppTableHeader />
+      </div>
 
       <div className="bg-white shadow-md rounded my-6 overflow-x-auto w-full md:w-11/12 mx-auto">
         <table className="min-w-max w-full table-auto">
@@ -90,7 +92,7 @@ function SessionDetails() {
                     <div className="mr-2">
                       <img
                         className="w-6 h-6 rounded-full"
-                        src="../../../src/assets/images/clock.svg"
+                        src="/images/clock.svg"
                       />
                     </div>
                     <span> {new Date().toISOString()} </span>

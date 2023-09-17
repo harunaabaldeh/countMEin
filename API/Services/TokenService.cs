@@ -55,7 +55,7 @@ public class TokenService
     }
 
     //create a token for the attendance link
-    public async Task<string> CreateAttendanceLinkToken(AttendantLink attendantLink)
+    public async Task<string> CreateAttendanceLinkToken(Session attendantLink)
     {
         var claims = new List<Claim>
         {

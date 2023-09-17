@@ -1,0 +1,18 @@
+export interface User {
+    displayName: string;
+    token: string;
+    username: string;
+    profileImageUrl: string;
+}
+
+export interface UserSignInForm {
+    email: string;
+    password: string;
+    }
+
+export interface UserSignUpForm {
+    firstName: string;
+    lastName: string;
+    email: string;
+    password: string;
+}

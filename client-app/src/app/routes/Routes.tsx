@@ -6,9 +6,9 @@ import SessionHistory from "../../features/dashboard/SessionHistory";
 import UserProfile from "../../features/dashboard/UserProfile";
 import App from "../../App";
 import GenerateQRCodeForm from "../../features/dashboard/GenerateQRCodeForm";
-import RecentSession from "../../features/dashboard/CurrentSession";
 import CurrentSession from "../../features/dashboard/CurrentSession";
 import SignUp from "../../features/account/SignUp";
+import AuthRoutes from "./AuthRoutes";
 
 export const routes: RouteObject[] = [
   {
@@ -27,28 +27,35 @@ export const routes: RouteObject[] = [
         path: "/signup",
         element: <SignUp />,
       },
+
       {
-        path: "/user-profile",
-        element: <UserProfile />,
+        element: <AuthRoutes />,
         children: [
           {
             path: "/user-profile",
-            element: <CurrentSession />,
-          },
-          {
-            path: "/user-profile/current-session",
-            element: <CurrentSession />,
-          },
-          {
-            path: "/user-profile/generate-qr-code",
-            element: <GenerateQRCodeForm />,
-          },
-          {
-            path: "/user-profile/session-history",
-            element: <SessionHistory />,
+            element: <UserProfile />,
+            children: [
+              {
+                path: "/user-profile",
+                element: <CurrentSession />,
+              },
+              {
+                path: "/user-profile/current-session",
+                element: <CurrentSession />,
+              },
+              {
+                path: "/user-profile/generate-qr-code",
+                element: <GenerateQRCodeForm />,
+              },
+              {
+                path: "/user-profile/session-history",
+                element: <SessionHistory />,
+              },
+            ],
           },
         ],
       },
+
       {
         path: "/session-details/:id",
         element: <SessionDetails />,

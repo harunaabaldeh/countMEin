@@ -7,7 +7,7 @@ public class Attendant
     public string Email { get; set; }
     public string MATNumber { get; set; }
     public Guid AttendantLinkId { get; set; }
-    public AttendantLink AttendantLink { get; set; }
+    public Session AttendantLink { get; set; }
     public DateTime CreatedAt { get; set; } = DateTime.UtcNow;
 
 

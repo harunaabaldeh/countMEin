@@ -1,10 +1,21 @@
 import { Link } from "react-router-dom";
 import AppPaginations from "../../app/components/AppPaginations";
 import AppTableHeader from "../../app/components/AppTableHeader";
+import { useEffect } from "react";
+import agent from "../../app/api/agent";
 
 function SessionHistory() {
+  useEffect(() => {
+    getAttendanceLinks();
+  }, []);
+
+  const getAttendanceLinks = async () => {
+    const sessions = await agent.Attendance.getAttendanceLinks();
+    console.log(sessions);
+  };
+
   return (
-    <>
+    <div className="container mx-auto w-full md:w-11/12">
       <AppTableHeader />
       <div className="bg-white shadow-md rounded my-6 overflow-x-auto">
         <table className="min-w-max w-full table-auto">
@@ -35,7 +46,7 @@ function SessionHistory() {
                     <div className="mr-2">
                       <img
                         className="w-6 h-6 rounded-full"
-                        src="../../../src/assets/images/clock.svg"
+                        src="/images/clock.svg"
                       />
                     </div>
                     <span> {new Date().toISOString()} </span>
@@ -131,7 +142,7 @@ function SessionHistory() {
       <div className="mt-6 md:flex md:items-center md:justify-between">
         <AppPaginations />
       </div>
-    </>
+    </div>
   );
 }
 export default SessionHistory;
