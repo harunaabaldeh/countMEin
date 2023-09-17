@@ -1,6 +1,6 @@
 function AppTableHeader() {
   return (
-    <div className="w-full md:w-11/12 mx-auto mt-6 md:flex md:items-center md:justify-between">
+    <div className="w-full mx-auto mt-6 md:flex md:items-center md:justify-between">
       <div className="flex items-center">
         <span className="mr-2 text-gray-700">Show</span>
         <select className="border border-gray-300 rounded-md text-gray-600 h-9 pl-5 pr-10 bg-white hover:border-gray-400 focus:outline-none appearance-none">

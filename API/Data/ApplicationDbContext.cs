@@ -8,7 +8,7 @@ public class ApplicationDbContext : IdentityDbContext<AppUser>
 {
     public ApplicationDbContext(DbContextOptions<ApplicationDbContext> options) : base(options) { }
     public DbSet<Attendant> Attendants { get; set; }
-    public DbSet<AttendantLink> AttendantLinks { get; set; }
+    public DbSet<Session> AttendantLinks { get; set; }
 
     protected override void OnModelCreating(ModelBuilder builder)
     {

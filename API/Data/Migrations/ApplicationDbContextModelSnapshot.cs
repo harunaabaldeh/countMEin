@@ -120,7 +120,7 @@ namespace API.Data.Migrations
 
                     b.HasIndex("AttendantLinkId");
 
-                    b.ToTable("Attendants");
+                    b.ToTable("Attendants", (string)null);
                 });
 
             modelBuilder.Entity("API.Entities.AttendantLink", b =>
@@ -147,7 +147,7 @@ namespace API.Data.Migrations
 
                     b.HasIndex("HostId");
 
-                    b.ToTable("AttendantLinks");
+                    b.ToTable("AttendantLinks", (string)null);
                 });
 
             modelBuilder.Entity("API.Entities.RefereshLinkToken", b =>
@@ -173,7 +173,7 @@ namespace API.Data.Migrations
 
                     b.HasIndex("AttendantLinkId");
 
-                    b.ToTable("RefereshLinkToken");
+                    b.ToTable("RefereshLinkToken", (string)null);
                 });
 
             modelBuilder.Entity("Microsoft.AspNetCore.Identity.IdentityRole", b =>

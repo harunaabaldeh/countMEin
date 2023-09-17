@@ -1,5 +1,5 @@
 namespace API.Entities;
-public class AttendantLink
+public class Session
 {
     public Guid Id { get; set; }
     public string HostId { get; set; }

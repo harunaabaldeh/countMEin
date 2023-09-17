@@ -47,19 +47,14 @@ public class AccountController : BaseApiController
     {
         if (await _userManager.Users.AnyAsync(x => x.Email == registerDto.Email))
         {
-            return BadRequest("Email taken");
-        }
-
-        if (await _userManager.Users.AnyAsync(x => x.UserName == registerDto.Username))
-        {
-            return BadRequest("Username taken");
+            return BadRequest("User name or Email taken");
         }
 
         var user = new AppUser
         {
-            DisplayName = registerDto.DisplayName,
+            DisplayName = registerDto.firstName + " " + registerDto.lastName,
             Email = registerDto.Email,
-            UserName = registerDto.Username
+            UserName = registerDto.Email,
         };
 
         var result = await _userManager.CreateAsync(user, registerDto.Password);
