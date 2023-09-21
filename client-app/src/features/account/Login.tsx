@@ -1,9 +1,11 @@
 import { yupResolver } from "@hookform/resolvers/yup";
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import { FieldValues, useForm } from "react-hook-form";
 import { Link, useNavigate } from "react-router-dom";
 import { loginFormSchema } from "./accountFormSchema";
 import agent from "../../app/api/agent";
+import { User } from "../../app/models/user";
+import { toast } from "react-toastify";
 
 function Login() {
   const navigate = useNavigate();
@@ -16,12 +18,58 @@ function Login() {
   });
 
   const [showPassword, setShowPassword] = useState(true);
+  const [error, setError] = useState<string>();
+
+  function storeUser(user: User) {
+    let claims = JSON.parse(atob(user.token.split(".")[1]));
+    const roles = typeof claims.role === "string" ? [claims.role] : claims.role;
+    localStorage.setItem("user", JSON.stringify({ ...user, roles }));
+    navigate("/user-profile");
+  }
 
   const onSubmit = async ({ email, password }: FieldValues) => {
     try {
       const user = await agent.Account.login({ email, password });
-      localStorage.setItem("user", JSON.stringify(user));
-      navigate("/user-profile");
+      storeUser(user);
+      toast.success("Successfully logged in");
+    } catch (error) {
+      console.log(error);
+      setError("Invalid email or password");
+    }
+  };
+
+  //google login
+  useEffect(() => {
+    // @ts-ignore
+    google.accounts.id.initialize({
+      client_id:
+        "559758667407-k0a5jbbmsabs5v5e6carbuj4md1tluao.apps.googleusercontent.com",
+      callback: googleLogin,
+    });
+
+    // @ts-ignore
+    google.accounts.id.renderButton(
+      document.getElementById("buttonDiv"),
+      { theme: "outline", size: "large" } // customization attributes
+    );
+
+    // @ts-ignore
+    google.accounts.id.prompt((notification: any) => {
+      if (notification.isNotDisplayed()) {
+        console.log("Prompt was not displayed");
+      } else if (notification.isSkippedMoment()) {
+        console.log("Prompt was skipped");
+      } else if (notification.isDismissedMoment()) {
+        console.log("Prompt was dismissed");
+      }
+    });
+  }, [navigate, localStorage, window.location.search]);
+
+  const googleLogin = async (response: any) => {
+    try {
+      const user = await agent.Account.googleLogin(response.credential);
+      storeUser(user);
+      toast.success("Successfully logged in");
     } catch (error) {
       console.log(error);
     }
@@ -123,6 +171,10 @@ function Login() {
                   )}
                 </div>
 
+                {error && (
+                  <p className="text-red-500 text-xs italic">{error}</p>
+                )}
+
                 <div className="flex items-center justify-between">
                   <div className="text-sm ml-auto">
                     <a
@@ -164,8 +216,11 @@ function Login() {
               </div>
 
               <div className="flex justify-center gap-5 w-full ">
+                {isSubmitting && (
+                  <div className="h-5 w-5 border-t-transparent border-solid animate-spin rounded-full border-white border-4"></div>
+                )}{" "}
                 <button
-                  type="submit"
+                  id="buttonDiv"
                   className="w-full flex items-center justify-center mb-6 md:mb-0 border border-gray-300 hover:border-slate-600 hover:bg-slate-700 hover:text-white text-sm text-gray-500 p-3  rounded-lg tracking-wide font-medium  cursor-pointer transition ease-in duration-500"
                 >
                   <svg

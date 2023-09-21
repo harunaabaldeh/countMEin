@@ -4,6 +4,7 @@ using API.DTOs;
 using API.Entities;
 using API.Services;
 using AutoMapper;
+using AutoMapper.QueryableExtensions;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Identity;
 using Microsoft.AspNetCore.Mvc;
@@ -12,7 +13,7 @@ using static Google.Apis.Auth.GoogleJsonWebSignature;
 
 namespace API.Controllers;
 
-public class AttendanceController : BaseApiController
+public partial class AttendanceController : BaseApiController
 {
     private readonly ApplicationDbContext _context;
     private readonly IConfiguration _config;
@@ -29,121 +30,25 @@ public class AttendanceController : BaseApiController
         _config = config;
     }
 
-    //generate attendance link: the link will be sent to the students to mark their attendance
-    // [Authorize]
-    // [HttpPost("generateAttendanceLink")]
-    // public async Task<ActionResult<SessionDto>> GenerateAttendanceLink(CreateSessionDto generateLinkDto)
-    // {
-    //     var user = await _userManager.FindByEmailAsync(User.FindFirstValue(ClaimTypes.Email));
-
-    //     //create a new attendance link
-    //     var attendanceLink = new Session
-    //     {
-    //         SessionName = generateLinkDto.SessionName,
-    //         SessionExpiresAt = DateTime.UtcNow.AddMinutes(30),
-    //         Host = user!,
-    //     };
-
-    //     //add the attendance link to the database
-    //     _context.AttendantLinks.Add(attendanceLink);
-    //     await _context.SaveChangesAsync();
-
-    //     var token = await _tokenService.CreateAttendanceLinkToken(attendanceLink);
-
-    //     //create a new attendance link dto
-    //     var attendantLinkDto = new SessionDto
-    //     {
-    //         SessionId = attendanceLink.Id.ToString(),
-    //         SessionName = attendanceLink.SessionName,
-    //         SessionExpiresAt = attendanceLink.SessionExpiresAt,
-    //         HostName = attendanceLink.Host.DisplayName,
-    //         Token = token
-    //     };
-
-    //     return attendantLinkDto;
-    // }
-
-    // deleteAttendanceLink: delete the attendance link
-    // [Authorize]
-    // [HttpDelete("deleteAttendanceLink/{sessionId}")]
-    // public async Task<ActionResult> DeleteAttendanceLink(string sessionId)
-    // {
-    //     var user = await _userManager.FindByEmailAsync(User.FindFirstValue(ClaimTypes.Email));
-
-    //     var attendanceLink = await _context.AttendantLinks
-    //         .FirstOrDefaultAsync(x => x.Id == Guid.Parse(sessionId));
-
-    //     if (attendanceLink == null)
-    //     {
-    //         return BadRequest("Invalid session id");
-    //     }
-
-    //     if (attendanceLink.Host != user)
-    //     {
-    //         return Unauthorized("You are not authorized to delete this session");
-    //     }
-
-    //     _context.AttendantLinks.Remove(attendanceLink);
-    //     await _context.SaveChangesAsync();
-
-    //     return Ok();
-    // }
-
-    // //get the attendance links of the current user
-    // // [Authorize]
-    // [HttpGet("getAttendanceLinks")]
-    // public async Task<ActionResult<List<SessionDto>>> GetAttendanceLinks()
-    // {
-    //     // var user = await _userManager.FindByEmailAsync(User.FindFirstValue(ClaimTypes.Email));
-
-    //     // var attendanceLinks = await _context.AttendantLinks
-    //     // .Where(x => x.Host == user)
-    //     // .ToListAsync();
-
-    //     return await _context.AttendantLinks
-    //         .Include(x => x.Host)
-    //         .ProjectTo<SessionDto>(_mapper.ConfigurationProvider)
-    //         .ToListAsync();
-
-    //     // var attendanceLinksDto = new List<AttendantLinkDto>();
-
-    //     // foreach (var attendanceLink in attendanceLinks)
-    //     // {
-
-    //     //     var attendanceLinkDto = new AttendantLinkDto
-    //     //     {
-    //     //         SessionId = attendanceLink.Id.ToString(),
-    //     //         SessionName = attendanceLink.SessionName,
-    //     //         SessionExpiresAt = attendanceLink.SessionExpiresAt,
-    //     //         HostName = attendanceLink.Host.DisplayName,
-    //     //     };
-
-    //     //     attendanceLinksDto.Add(attendanceLinkDto);
-    //     // }
-
-    //     // return attendanceLinksDto;
-    // }
-
-    //Create a new attendant for the attendance link
-    [Authorize]
-    [HttpPost("createAttendant/{sessionId}")]
-    public async Task<ActionResult<AttendantDto>> CreateAttendant(string sessionId, string accessToken, string linkToken)
+    [AllowAnonymous]
+    [HttpPost("createAttendee/{sessionId}")]
+    public async Task<ActionResult<AttendeeDto>> CreateAttendee(string sessionId, string accessToken, string linkToken)
     {
-        var attendantLink = await _context.AttendantLinks
-            .Include(x => x.Attendants)
+        var session = await _context.Sessions
+            .Include(x => x.Attendees)
             .FirstOrDefaultAsync(x => x.Id == Guid.Parse(sessionId));
 
-        if (attendantLink == null)
+        if (session == null)
         {
             return BadRequest("Invalid session id");
         }
 
-        if (attendantLink.SessionExpiresAt < DateTime.UtcNow)
+        if (session.SessionExpiresAt < DateTime.UtcNow)
         {
             return BadRequest("Session expired");
         }
 
-        var tokenValidated = await _tokenService.ValidateAttendanceLinkToken(linkToken);
+        var tokenValidated = _tokenService.ValidateAttendanceLinkToken(linkToken);
         if (!tokenValidated) return BadRequest("Invalid token");
 
 
@@ -163,74 +68,55 @@ public class AttendanceController : BaseApiController
         }
 
         //check if the user already exists in the attendance link
-        var attendant = await _context.Attendants
-            .FirstOrDefaultAsync(x => x.Email == payload.Email && x.AttendantLink == attendantLink);
+        var attendee = await _context.Attendees
+            .FirstOrDefaultAsync(x => x.Email == payload.Email && x.Session == session);
 
-        if (attendant != null)
+        if (attendee != null)
         {
             return BadRequest("You already joined this session");
         }
 
-        //create a new attendant
-        attendant = new Attendant
+        //create a new attendee
+        attendee = new Attendee
         {
             Email = payload.Email,
             FirstName = payload.GivenName,
             LastName = payload.FamilyName,
-            AttendantLink = attendantLink,
-            MATNumber = Regex.Match(payload.Email, @"\d+").Value ?? "000000"
+            Session = session,
+            MATNumber = MyRegex().Match(payload.Email).Value ?? "000000"
+            // MATNumber = Regex.Match(payload.Email, @"\d+").Value ?? "000000"
+
         };
 
-        //add the attendant to the database
-        _context.Attendants.Add(attendant);
+        _context.Attendees.Add(attendee);
         await _context.SaveChangesAsync();
 
-        //create a new attendant dto
-        var attendantDto = new AttendantDto
+        var attendeeDto = new AttendeeDto
         {
-            FirstName = attendant.FirstName,
-            LastName = attendant.LastName,
-            Email = attendant.Email,
-            MATNumber = attendant.MATNumber,
-            SessionName = attendantLink.SessionName
+            FirstName = attendee.FirstName,
+            LastName = attendee.LastName,
+            Email = attendee.Email,
+            MATNumber = attendee.MATNumber,
+            SessionName = session.SessionName
         };
 
-        return attendantDto;
+        return attendeeDto;
     }
 
-    //get the attendants of the attendance link
     [Authorize]
-    [HttpGet("getAttendants/{sessionId}")]
-    public async Task<ActionResult<List<AttendantDto>>> GetAttendants(string sessionId)
+    [HttpGet("sessionAttendees/{sessionId}")]
+    public async Task<ActionResult<SessionAttendeesDto>> SessionAttendees(string sessionId)
     {
-        var attendantLink = await _context.AttendantLinks
-            .Include(x => x.Attendants)
-            .FirstOrDefaultAsync(x => x.Id == Guid.Parse(sessionId));
+        return await _context.Sessions
+            .Include(x => x.Attendees)
+            .Include(x => x.Host)
+            .OrderByDescending(x => x.CreatedAt)
+            .Where(x => x.Id == Guid.Parse(sessionId))
+            .ProjectTo<SessionAttendeesDto>(_mapper.ConfigurationProvider)
+            .FirstOrDefaultAsync();
 
-        if (attendantLink == null)
-        {
-            return BadRequest("Invalid session id");
-        }
-
-        var attendants = attendantLink.Attendants;
-
-        var attendantsDto = new List<AttendantDto>();
-
-        foreach (var attendant in attendants)
-        {
-            var attendantDto = new AttendantDto
-            {
-                FirstName = attendant.FirstName,
-                LastName = attendant.LastName,
-                Email = attendant.Email,
-                MATNumber = attendant.MATNumber,
-                SessionName = attendantLink.SessionName
-            };
-
-            attendantsDto.Add(attendantDto);
-        }
-
-        return attendantsDto;
     }
 
+    [GeneratedRegex("\\d+")]
+    private static partial Regex MyRegex();
 }

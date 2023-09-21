@@ -7,8 +7,8 @@ namespace API.Data;
 public class ApplicationDbContext : IdentityDbContext<AppUser>
 {
     public ApplicationDbContext(DbContextOptions<ApplicationDbContext> options) : base(options) { }
-    public DbSet<Attendant> Attendants { get; set; }
-    public DbSet<Session> AttendantLinks { get; set; }
+    public DbSet<Attendee> Attendees { get; set; }
+    public DbSet<Session> Sessions { get; set; }
 
     protected override void OnModelCreating(ModelBuilder builder)
     {
@@ -17,7 +17,7 @@ public class ApplicationDbContext : IdentityDbContext<AppUser>
         builder.Entity<IdentityRole>(x => x.HasData(
             new IdentityRole { Id = "1", Name = "Admin", NormalizedName = "ADMIN" },
             new IdentityRole { Id = "2", Name = "Host", NormalizedName = "HOST" },
-            new IdentityRole { Id = "3", Name = "Attendant", NormalizedName = "ATTENDANT" }
+            new IdentityRole { Id = "3", Name = "Attendee", NormalizedName = "Attendee" }
         ));
     }
 }

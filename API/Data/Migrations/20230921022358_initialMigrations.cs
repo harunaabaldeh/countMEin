@@ -32,8 +32,9 @@ namespace API.Data.Migrations
                 columns: table => new
                 {
                     Id = table.Column<string>(type: "TEXT", nullable: false),
-                    DisplayName = table.Column<string>(type: "TEXT", nullable: false),
-                    ProfileImageUrl = table.Column<string>(type: "TEXT", nullable: false),
+                    FirstName = table.Column<string>(type: "TEXT", nullable: true),
+                    LastName = table.Column<string>(type: "TEXT", nullable: true),
+                    ProfileImageUrl = table.Column<string>(type: "TEXT", nullable: true),
                     UserName = table.Column<string>(type: "TEXT", maxLength: 256, nullable: true),
                     NormalizedUserName = table.Column<string>(type: "TEXT", maxLength: 256, nullable: true),
                     Email = table.Column<string>(type: "TEXT", maxLength: 256, nullable: true),
@@ -161,46 +162,70 @@ namespace API.Data.Migrations
                 });
 
             migrationBuilder.CreateTable(
-                name: "AttendantLinks",
-                columns: table => new
-                {
-                    Id = table.Column<Guid>(type: "TEXT", nullable: false),
-                    HostId = table.Column<string>(type: "TEXT", nullable: false),
-                    SessionName = table.Column<string>(type: "TEXT", nullable: false),
-                    SessionExpiration = table.Column<string>(type: "TEXT", nullable: false),
-                    CreatedAt = table.Column<DateTime>(type: "TEXT", nullable: false)
-                },
-                constraints: table =>
-                {
-                    table.PrimaryKey("PK_AttendantLinks", x => x.Id);
-                    table.ForeignKey(
-                        name: "FK_AttendantLinks_AspNetUsers_HostId",
-                        column: x => x.HostId,
-                        principalTable: "AspNetUsers",
-                        principalColumn: "Id",
-                        onDelete: ReferentialAction.Cascade);
-                });
-
-            migrationBuilder.CreateTable(
-                name: "Attendants",
+                name: "RefereshAppUserToken",
                 columns: table => new
                 {
                     Id = table.Column<int>(type: "INTEGER", nullable: false)
                         .Annotation("Sqlite:Autoincrement", true),
-                    FirstName = table.Column<string>(type: "TEXT", nullable: false),
-                    LastName = table.Column<string>(type: "TEXT", nullable: false),
-                    Email = table.Column<string>(type: "TEXT", nullable: false),
-                    MATNumber = table.Column<string>(type: "TEXT", nullable: false),
-                    AttendantLinkId = table.Column<Guid>(type: "TEXT", nullable: true)
+                    AppUserId = table.Column<string>(type: "TEXT", nullable: true),
+                    Token = table.Column<string>(type: "TEXT", nullable: true),
+                    Expires = table.Column<DateTime>(type: "TEXT", nullable: false),
+                    Revoked = table.Column<DateTime>(type: "TEXT", nullable: true)
                 },
                 constraints: table =>
                 {
-                    table.PrimaryKey("PK_Attendants", x => x.Id);
+                    table.PrimaryKey("PK_RefereshAppUserToken", x => x.Id);
                     table.ForeignKey(
-                        name: "FK_Attendants_AttendantLinks_AttendantLinkId",
-                        column: x => x.AttendantLinkId,
-                        principalTable: "AttendantLinks",
+                        name: "FK_RefereshAppUserToken_AspNetUsers_AppUserId",
+                        column: x => x.AppUserId,
+                        principalTable: "AspNetUsers",
                         principalColumn: "Id");
+                });
+
+            migrationBuilder.CreateTable(
+                name: "Sessions",
+                columns: table => new
+                {
+                    Id = table.Column<Guid>(type: "TEXT", nullable: false),
+                    HostId = table.Column<string>(type: "TEXT", nullable: true),
+                    SessionName = table.Column<string>(type: "TEXT", maxLength: 50, nullable: false),
+                    SessionExpiresAt = table.Column<DateTime>(type: "TEXT", nullable: false),
+                    CreatedAt = table.Column<DateTime>(type: "TEXT", nullable: false),
+                    RegenerateLinkToken = table.Column<bool>(type: "INTEGER", nullable: false),
+                    LinkExpiryFreequency = table.Column<int>(type: "INTEGER", nullable: false)
+                },
+                constraints: table =>
+                {
+                    table.PrimaryKey("PK_Sessions", x => x.Id);
+                    table.ForeignKey(
+                        name: "FK_Sessions_AspNetUsers_HostId",
+                        column: x => x.HostId,
+                        principalTable: "AspNetUsers",
+                        principalColumn: "Id");
+                });
+
+            migrationBuilder.CreateTable(
+                name: "Attendees",
+                columns: table => new
+                {
+                    Id = table.Column<int>(type: "INTEGER", nullable: false)
+                        .Annotation("Sqlite:Autoincrement", true),
+                    FirstName = table.Column<string>(type: "TEXT", nullable: true),
+                    LastName = table.Column<string>(type: "TEXT", nullable: true),
+                    Email = table.Column<string>(type: "TEXT", nullable: true),
+                    MATNumber = table.Column<string>(type: "TEXT", nullable: true),
+                    SessionId = table.Column<Guid>(type: "TEXT", nullable: false),
+                    CreatedAt = table.Column<DateTime>(type: "TEXT", nullable: false)
+                },
+                constraints: table =>
+                {
+                    table.PrimaryKey("PK_Attendees", x => x.Id);
+                    table.ForeignKey(
+                        name: "FK_Attendees_Sessions_SessionId",
+                        column: x => x.SessionId,
+                        principalTable: "Sessions",
+                        principalColumn: "Id",
+                        onDelete: ReferentialAction.Cascade);
                 });
 
             migrationBuilder.CreateTable(
@@ -209,8 +234,8 @@ namespace API.Data.Migrations
                 {
                     Id = table.Column<int>(type: "INTEGER", nullable: false)
                         .Annotation("Sqlite:Autoincrement", true),
-                    AttendantLinkId = table.Column<Guid>(type: "TEXT", nullable: false),
-                    Token = table.Column<string>(type: "TEXT", nullable: false),
+                    SessionId = table.Column<Guid>(type: "TEXT", nullable: false),
+                    Token = table.Column<string>(type: "TEXT", nullable: true),
                     Expires = table.Column<DateTime>(type: "TEXT", nullable: false),
                     Revoked = table.Column<DateTime>(type: "TEXT", nullable: true)
                 },
@@ -218,9 +243,9 @@ namespace API.Data.Migrations
                 {
                     table.PrimaryKey("PK_RefereshLinkToken", x => x.Id);
                     table.ForeignKey(
-                        name: "FK_RefereshLinkToken_AttendantLinks_AttendantLinkId",
-                        column: x => x.AttendantLinkId,
-                        principalTable: "AttendantLinks",
+                        name: "FK_RefereshLinkToken_Sessions_SessionId",
+                        column: x => x.SessionId,
+                        principalTable: "Sessions",
                         principalColumn: "Id",
                         onDelete: ReferentialAction.Cascade);
                 });
@@ -232,7 +257,7 @@ namespace API.Data.Migrations
                 {
                     { "1", null, "Admin", "ADMIN" },
                     { "2", null, "Host", "HOST" },
-                    { "3", null, "Attendant", "ATTENDANT" }
+                    { "3", null, "Attendee", "Attendee" }
                 });
 
             migrationBuilder.CreateIndex(
@@ -273,19 +298,24 @@ namespace API.Data.Migrations
                 unique: true);
 
             migrationBuilder.CreateIndex(
-                name: "IX_AttendantLinks_HostId",
-                table: "AttendantLinks",
-                column: "HostId");
+                name: "IX_Attendees_SessionId",
+                table: "Attendees",
+                column: "SessionId");
 
             migrationBuilder.CreateIndex(
-                name: "IX_Attendants_AttendantLinkId",
-                table: "Attendants",
-                column: "AttendantLinkId");
+                name: "IX_RefereshAppUserToken_AppUserId",
+                table: "RefereshAppUserToken",
+                column: "AppUserId");
 
             migrationBuilder.CreateIndex(
-                name: "IX_RefereshLinkToken_AttendantLinkId",
+                name: "IX_RefereshLinkToken_SessionId",
                 table: "RefereshLinkToken",
-                column: "AttendantLinkId");
+                column: "SessionId");
+
+            migrationBuilder.CreateIndex(
+                name: "IX_Sessions_HostId",
+                table: "Sessions",
+                column: "HostId");
         }
 
         /// <inheritdoc />
@@ -307,7 +337,10 @@ namespace API.Data.Migrations
                 name: "AspNetUserTokens");
 
             migrationBuilder.DropTable(
-                name: "Attendants");
+                name: "Attendees");
+
+            migrationBuilder.DropTable(
+                name: "RefereshAppUserToken");
 
             migrationBuilder.DropTable(
                 name: "RefereshLinkToken");
@@ -316,7 +349,7 @@ namespace API.Data.Migrations
                 name: "AspNetRoles");
 
             migrationBuilder.DropTable(
-                name: "AttendantLinks");
+                name: "Sessions");
 
             migrationBuilder.DropTable(
                 name: "AspNetUsers");

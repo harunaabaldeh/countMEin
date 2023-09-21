@@ -1,11 +1,10 @@
 using System.IdentityModel.Tokens.Jwt;
 using System.Security.Claims;
+using System.Security.Cryptography;
 using System.Text;
 using API.Data;
-using API.DTOs;
 using API.Entities;
 using Microsoft.AspNetCore.Identity;
-using Microsoft.EntityFrameworkCore;
 using Microsoft.IdentityModel.Tokens;
 
 namespace API.Services;
@@ -43,7 +42,7 @@ public class TokenService
         var tokenDescriptor = new SecurityTokenDescriptor
         {
             Subject = new ClaimsIdentity(claims),
-            Expires = DateTime.Now.AddDays(1),
+            Expires = DateTime.Now.AddMinutes(7),
             SigningCredentials = creds
         };
 
@@ -55,12 +54,13 @@ public class TokenService
     }
 
     //create a token for the attendance link
-    public async Task<string> CreateAttendanceLinkToken(Session attendantLink)
+    public string CreateAttendanceLinkToken(Session session)
     {
         var claims = new List<Claim>
         {
-            new Claim(ClaimTypes.Name, attendantLink.SessionName),
-            new Claim(ClaimTypes.NameIdentifier, attendantLink.Id.ToString()),
+            new Claim(ClaimTypes.Name, session.SessionName),
+            new Claim(ClaimTypes.NameIdentifier, session.Id.ToString()),
+            new Claim(ClaimTypes.GivenName, session.Host.FirstName + " " + session.Host.LastName),
         };
 
         var key = new SymmetricSecurityKey(Encoding.UTF8.GetBytes(_config["JWTSettings:TokenKey"]));
@@ -69,7 +69,7 @@ public class TokenService
         var tokenDescriptor = new SecurityTokenDescriptor
         {
             Subject = new ClaimsIdentity(claims),
-            Expires = DateTime.Now.AddMinutes(1),
+            Expires = session.RegenerateLinkToken ? DateTime.Now.AddSeconds(session.LinkExpiryFreequency) : session.SessionExpiresAt,
             SigningCredentials = creds
         };
 
@@ -80,8 +80,31 @@ public class TokenService
         return tokenHandler.WriteToken(token);
     }
 
+    public RefereshAppUserToken GenerateRefereshAppUserToken()
+    {
+        var randomNumber = new byte[32];
+        using var rng = RandomNumberGenerator.Create();
+        rng.GetBytes(randomNumber);
+        return new RefereshAppUserToken
+        {
+            Token = Convert.ToBase64String(randomNumber)
+        };
+    }
+
+    public RefereshLinkToken GenerateRefereshLinkToken(Session session)
+    {
+        var randomNumber = new byte[32];
+        using var rng = RandomNumberGenerator.Create();
+        rng.GetBytes(randomNumber);
+        return new RefereshLinkToken
+        {
+            Token = Convert.ToBase64String(randomNumber),
+            Expires = session.RegenerateLinkToken ? DateTime.Now.AddSeconds(session.LinkExpiryFreequency) : session.SessionExpiresAt
+        };
+    }
+
     //validate the attendance link token
-    public async Task<bool> ValidateAttendanceLinkToken(string token)
+    public bool ValidateAttendanceLinkToken(string token)
     {
         try
         {
@@ -113,4 +136,5 @@ public class TokenService
 
         return true;
     }
+
 }

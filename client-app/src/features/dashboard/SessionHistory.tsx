@@ -1,18 +1,33 @@
 import { Link } from "react-router-dom";
 import AppPaginations from "../../app/components/AppPaginations";
 import AppTableHeader from "../../app/components/AppTableHeader";
-import { useEffect } from "react";
+import { useEffect, useState } from "react";
 import agent from "../../app/api/agent";
+import { Session } from "../../app/models/session";
+import AppLoading from "../../app/components/AppLoading";
 
 function SessionHistory() {
+  const [sessions, setSessions] = useState<Session[]>([]);
+  const [loading, setLoading] = useState(false);
+
   useEffect(() => {
-    getAttendanceLinks();
+    getSessions();
   }, []);
 
-  const getAttendanceLinks = async () => {
-    const sessions = await agent.Attendance.getAttendanceLinks();
-    console.log(sessions);
+  const getSessions = async () => {
+    try {
+      setLoading(true);
+      const response: Session[] = await agent.Session.getSessions();
+      console.log(response);
+      setSessions(response);
+    } catch (error) {
+      console.log(error);
+    } finally {
+      setLoading(false);
+    }
   };
+
+  if (loading) return <AppLoading />;
 
   return (
     <div className="container mx-auto w-full md:w-11/12">
@@ -23,22 +38,20 @@ function SessionHistory() {
             <tr className="bg-gray-200 text-gray-600 uppercase text-sm leading-normal">
               <th className="py-3 px-6 text-left">Session</th>
               <th className="py-3 px-6 text-left">Expiration Date</th>
-              <th className="py-3 px-6 text-center">Attendants</th>
+              <th className="py-3 px-6 text-center">Attendees</th>
               <th className="py-3 px-6 text-center">Status</th>
               <th className="py-3 px-6 text-center">Actions</th>
             </tr>
           </thead>
           <tbody className="text-gray-600 text-sm font-light">
-            {Array.from(Array(10).keys()).map((_, index) => (
+            {sessions.map((session, index) => (
               <tr
                 key={index}
                 className="border-b border-gray-200 hover:bg-gray-100"
               >
                 <td className="py-3 px-6 text-left whitespace-nowrap">
                   <div className="flex items-center">
-                    <span className="font-medium">
-                      Management 101 Wednesday Morning
-                    </span>
+                    <span className="font-medium">{session.sessionName}</span>
                   </div>
                 </td>
                 <td className="py-3 px-6 text-left">
@@ -49,7 +62,7 @@ function SessionHistory() {
                         src="/images/clock.svg"
                       />
                     </div>
-                    <span> {new Date().toISOString()} </span>
+                    <span> {session.sessionExpiresAt} </span>
                   </div>
                 </td>
                 <td className="py-3 px-6 text-center">
@@ -66,20 +79,22 @@ function SessionHistory() {
                       className="object-cover w-6 h-6 -mx-1 border-2 border-white rounded-full dark:border-gray-700 shrink-0"
                       src="https://randomuser.me/api/portraits/men/3.jpg"
                     />
-                    <p className="flex items-center justify-center w-8 h-8 -mx-1 text-xs text-white bg-gray-600 border-2 border-white rounded-full">
-                      +4
+                    <p className="flex items-center justify-center w-8 h-8 -mx-1 text-xs text-slate-700 bg-gray-200 border-2 border-white rounded-full">
+                      {session.attendeesCount > 3
+                        ? `+${session.attendeesCount - 3}`
+                        : "+0"}
                     </p>
                   </div>
                 </td>
                 <td className="py-3 px-6 text-center">
                   <span className="bg-purple-200 text-purple-600 py-1 px-3 rounded-full text-xs">
-                    Active
+                    {session.status}
                   </span>
                 </td>
                 <td className="py-3 px-6 text-center">
                   <div className="flex item-center justify-center">
                     <Link
-                      to="/session-details/1"
+                      to={`/session-details/${session.sessionId}`}
                       className="w-4 mr-2 transform hover:text-purple-500 hover:scale-110"
                     >
                       <svg

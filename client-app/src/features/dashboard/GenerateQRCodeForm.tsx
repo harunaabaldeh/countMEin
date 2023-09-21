@@ -21,28 +21,20 @@ function GenerateQRCodeForm() {
       sessionName,
       sessionExpiresAt,
       linkExpiryFreequency,
-      regenerateQRCode,
-    } = data;
+      regenerateLinkToken,
+    } = data as SessionFormValues;
 
     let session: SessionFormValues = {
       sessionName,
       sessionExpiresAt,
-      regenerateQRCode: !regenerateQRCode,
+      regenerateLinkToken: !regenerateLinkToken,
+      linkExpiryFreequency,
     };
 
-    if (!regenerateQRCode) {
-      session = {
-        ...session,
-        linkExpiryFreequency,
-      };
-    }
-
-    console.log("data ", { ...data, regenerateQRCode: !regenerateQRCode });
     try {
       const result = await agent.Session.createSession(session);
-      console.log(result);
       navigate("/user-profile/current-session/", {
-        state: { session: result },
+        state: { from: result },
       });
     } catch (error) {
       console.log(error);
@@ -87,7 +79,7 @@ function GenerateQRCodeForm() {
             </p>
           )}
         </div>
-        {!watch("regenerateQRCode") && (
+        {!watch("regenerateLinkToken") && (
           <div className="mt-4">
             <label className="block text-gray-700 text-sm font-bold mb-2">
               Regenerate after (seconds){" "}
@@ -112,13 +104,13 @@ function GenerateQRCodeForm() {
             <input
               className="form-checkbox h-5 w-5 text-gray-600"
               type="checkbox"
-              {...register("regenerateQRCode")}
+              {...register("regenerateLinkToken")}
             />
             <span className="ml-2">Do not regenerate QRCode</span>
           </label>
         </div>
 
-        {watch("regenerateQRCode") && (
+        {watch("regenerateLinkToken") && (
           <div
             className="flex bg-blue-100 rounded-lg p-4 mb-4 text-sm text-blue-700"
             role="alert"

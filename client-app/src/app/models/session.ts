@@ -1,18 +1,31 @@
-import { Attendant } from "./attendance";
+import { Attendee } from "./attendance";
 
 export interface SessionFormValues {
-    sessionName: string;
-    sessionExpiresAt: Date;
-    linkExpiryFreequency?: number;
-    regenerateQRCode: boolean;
+    sessionName: string
+    sessionExpiresAt: string
+    linkExpiryFreequency: number
+    regenerateLinkToken: boolean
 }
 
 export interface Session {
-    id: string;
-    sessionName: string;
-    sessionExpiresAt: Date;
-    linkExpiryFreequency: number;
-    linkToken: string;
-    qrCode: string;
-    attendants: Attendant[];
+    sessionId: string
+    sessionName: string
+    sessionExpiresAt: string
+    hostName: string
+    linkToken: string
+    attendeesCount: number
+    status: string
+    linkExpiryFreequency: number
+    regenerateLinkToken: boolean
+}
+
+export interface SessionAttendees {
+    sessionId: string
+    sessionName: string
+    sessionExpiresAt: string
+    hostName: string
+    linkToken: string
+    attendees: Attendee[];
+    attendeesCount: number
+    status: string
 }

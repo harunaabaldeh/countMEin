@@ -2,6 +2,8 @@ using System.Security.Claims;
 using API.DTOs;
 using API.Entities;
 using API.Services;
+using AutoMapper;
+using Google.Apis.Auth;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Identity;
 using Microsoft.AspNetCore.Mvc;
@@ -14,10 +16,12 @@ public class AccountController : BaseApiController
     private readonly UserManager<AppUser> _userManager;
     private readonly SignInManager<AppUser> _signInManager;
     private readonly TokenService _tokenService;
+    private readonly IMapper _mapper;
     public AccountController(UserManager<AppUser> userManager,
                              SignInManager<AppUser> signInManager,
-                             TokenService tokenService)
+                             TokenService tokenService, IMapper mapper)
     {
+        _mapper = mapper;
         _signInManager = signInManager;
         _userManager = userManager;
         _tokenService = tokenService;
@@ -33,17 +37,21 @@ public class AccountController : BaseApiController
 
         var result = await _signInManager.CheckPasswordSignInAsync(user, loginDto.Password, false);
 
-        if (result.Succeeded)
+        if (!result.Succeeded)
         {
-            return await CreateUserObject(user);
+            return Unauthorized("Invalid email or password");
         }
 
-        return Unauthorized("Invalid email or password");
+        var token = await _tokenService.CreateUserToken(user);
+
+        await SetRefereshAppUserTokenCookie(user);
+        return _mapper.Map<UserDto>(user, opt => opt.Items["AppUserToken"] = token);
+
     }
 
     [AllowAnonymous]
     [HttpPost("register")]
-    public async Task<ActionResult<UserDto>> Register(RegisterDto registerDto)
+    public async Task<ActionResult> Register(RegisterDto registerDto)
     {
         if (await _userManager.Users.AnyAsync(x => x.Email == registerDto.Email))
         {
@@ -52,7 +60,8 @@ public class AccountController : BaseApiController
 
         var user = new AppUser
         {
-            DisplayName = registerDto.firstName + " " + registerDto.lastName,
+            FirstName = registerDto.FirstName,
+            LastName = registerDto.LastName,
             Email = registerDto.Email,
             UserName = registerDto.Email,
         };
@@ -61,10 +70,46 @@ public class AccountController : BaseApiController
 
         if (result.Succeeded)
         {
-            return await CreateUserObject(user);
+            var token = await _tokenService.CreateUserToken(user);
+            return Created("user", _mapper.Map<UserDto>(user, opt => opt.Items["AppUserToken"] = token));
         }
 
         return BadRequest("Problem registering user");
+    }
+
+    [AllowAnonymous]
+    [HttpPost("googleLogin")]
+    public async Task<ActionResult<UserDto>> GoogleLogin(string accessToken)
+    {
+        var payload = await GoogleJsonWebSignature.ValidateAsync(accessToken, new GoogleJsonWebSignature.ValidationSettings());
+
+        if (payload == null)
+        {
+            return BadRequest("Invalid access token");
+        }
+
+        var user = await _userManager.FindByEmailAsync(payload.Email);
+
+        if (user == null)
+        {
+            user = new AppUser
+            {
+
+                Email = payload.Email,
+                UserName = payload.Email,
+                FirstName = payload.GivenName,
+                LastName = payload.FamilyName,
+                ProfileImageUrl = payload.Picture
+            };
+
+            var result = await _userManager.CreateAsync(user);
+
+            if (!result.Succeeded) return BadRequest("Problem creating user account");
+        }
+
+        var token = await _tokenService.CreateUserToken(user);
+        await SetRefereshAppUserTokenCookie(user);
+        return _mapper.Map<UserDto>(user, opt => opt.Items["AppUserToken"] = token);
     }
 
     [Authorize]
@@ -73,17 +118,40 @@ public class AccountController : BaseApiController
     {
         var user = await _userManager.FindByEmailAsync(User.FindFirstValue(ClaimTypes.Email));
 
-        return await CreateUserObject(user);
+        var token = await _tokenService.CreateUserToken(user);
+        return _mapper.Map<UserDto>(user, opt => opt.Items["AppUserToken"] = token);
     }
 
-    private async Task<UserDto> CreateUserObject(AppUser user)
+    [Authorize]
+    [HttpPost("refereshAppUserToken")]
+    public async Task<ActionResult<UserDto>> RefereshAppUserToken()
     {
-        return new UserDto
+        var refereshAppUserToken = Request.Cookies["refereshAppUserToken"];
+        var user = await _userManager.Users
+        .Include(r => r.RefreshAppUserTokens)
+        .FirstOrDefaultAsync(x => x.UserName == User.FindFirstValue(ClaimTypes.Name));
+        if (user == null) return Unauthorized();
+
+        var oldToken = user.RefreshAppUserTokens.SingleOrDefault(x => x.Token == refereshAppUserToken);
+        if (oldToken != null && !oldToken.IsActive) return Unauthorized();
+
+        await SetRefereshAppUserTokenCookie(user);
+        var token = await _tokenService.CreateUserToken(user);
+        return _mapper.Map<UserDto>(user, opt => opt.Items["AppUserToken"] = token);
+    }
+
+    private async Task SetRefereshAppUserTokenCookie(AppUser user)
+    {
+        var refereshAppUserToken = _tokenService.GenerateRefereshAppUserToken();
+        user.RefreshAppUserTokens.Add(refereshAppUserToken);
+        await _userManager.UpdateAsync(user);
+
+        var cookieOptions = new CookieOptions
         {
-            DisplayName = user.DisplayName,
-            ProfileImageUrl = "",
-            Token = await _tokenService.CreateUserToken(user),
-            Username = user.UserName
+            HttpOnly = true,
+            Expires = DateTime.UtcNow.AddDays(7),
+            IsEssential = true
         };
+        Response.Cookies.Append("refereshAppUserToken", refereshAppUserToken.Token, cookieOptions);
     }
 }

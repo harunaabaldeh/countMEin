@@ -1,10 +1,14 @@
-import axios, { AxiosResponse } from "axios";
-import { UserSignInForm, UserSignUpForm } from "../models/user";
-import { SessionFormValues } from "../models/session";
+import axios, { AxiosError, AxiosResponse } from "axios";
+import { User, UserSignInForm, UserSignUpForm } from "../models/user";
+import { Session, SessionAttendees, SessionFormValues } from "../models/session";
+import { toast } from "react-toastify";
+import { router } from "../routes/Routes";
+import { Attendee } from "../models/attendance";
 
 axios.defaults.baseURL = import.meta.env.VITE_API_URL;
+axios.defaults.withCredentials = true;
 
-const responseBody = (response: AxiosResponse) => response.data;
+const responseBody = <T>(response: AxiosResponse<T>) => response.data;
 
 const sleep = (delay: number) => new Promise((resolve) => setTimeout(resolve, delay));
 
@@ -19,45 +23,91 @@ axios.interceptors.request.use(async (config) => {
   }
 });
 
-axios.interceptors.response.use(async (response) => {
-  try {
-    await sleep(1000);
+axios.interceptors.response.use(async (response: AxiosResponse) => {
+
+    await sleep(2);
     return response;
-  } catch (error) {
-    console.log(error);
+  }, async (error: AxiosError) => {
+
+    if (!error.response)
+    return toast.error('Network error - make sure API is running!');
+
+    console.log("error, response ", error.response)
+    
+    const { data, status, config, headers } = error.response as AxiosResponse;
+    switch (status) {
+      case 400:
+        if (typeof data === "string") {
+          toast.error(data);
+        }
+        if (config.method === "get" && data.errors?.hasOwnProperty("id")) {
+          router.navigate("/not-found");
+        }
+        if (data.errors) {
+          const modalStateErrors = [];
+          for (const key in data.errors) {
+            if (data.errors[key]) {
+              modalStateErrors.push(data.errors[key]);
+            }
+          }
+          throw modalStateErrors.flat();
+        }
+        break;
+      case 401:
+        if (status === 401 && headers['www-authenticate'].startsWith('Bearer error="invalid_token"')) {
+          localStorage.removeItem('user');
+          toast.error('Session expired - please login again');
+          router.navigate("/login");
+      } else {
+          toast.error(data.title || 'Unauthorized');
+      }
+      break;
+      case 404:
+        router.navigate("/not-found");
+        break;
+      
+      case 405:
+        toast.error('Method not allowed');
+        break;
+      case 500:
+        router.navigate("/server-error", { state: { error: data } });
+        break;
+    }
     return await Promise.reject(error);
-  }
-});
+  });
+
+
+
 
 const requests = {
-  get: (url: string) => axios.get(url).then(responseBody),
-  post: (url: string, body: {}) => axios.post(url, body).then(responseBody),
-  put: (url: string, body: {}) => axios.put(url, body).then(responseBody),
-  del: (url: string) => axios.delete(url).then(responseBody),
+  get: <T>(url: string) => axios.get<T>(url).then(responseBody),
+  post: <T>(url: string, body: {}) => axios.post<T>(url, body).then(responseBody),
+  put: <T>(url: string, body: {}) => axios.put<T>(url, body).then(responseBody),
+  del: <T>(url: string) => axios.delete<T>(url).then(responseBody),
 };
 
 const Attendance = {
-    // generateAttendanceLink: (generateLink: GenerateLinkForm) => requests.post('/attendance/generateAttendanceLink', generateLink),
-    // getAttendanceLinks: () => requests.get('/attendance/getAttendanceLinks'),
-    // deleteAttendanceLink: (id: string) => requests.del(`/attendance/deleteAttendanceLink/${id}`),
-    createAttendant: (sessionId: string, accessToken: string, linkToken: string) => requests.post(`/attendance/createAttendant/${sessionId}?accessToken=${accessToken}&linkToken=${linkToken}`, {}),
-    getAttendants: (sessionId: string) => requests.get(`/attendance/getAttendants/${sessionId}`),
+    createAttendee: (sessionId: string, accessToken: string, linkToken: string) => requests.post<Attendee>(`/attendance/createAttendee/${sessionId}?accessToken=${accessToken}&linkToken=${linkToken}`, {}),
+    getAttendees: (sessionId: string) => requests.get<SessionAttendees>(`/attendance/sessionAttendees/${sessionId}`),
 };
 
 const Account = {
-  login: (user: UserSignInForm) => requests.post("/account/login", user),
-  register: (user: UserSignUpForm) => requests.post("/account/register", user),
-  current: () => requests.get("/account"),
+  login: (user: UserSignInForm) => requests.post<User>("/account/login", user),
+  register: (user: UserSignUpForm) => requests.post<void>("/account/register", user),
+  current: () => requests.get<User>("/account"),
+  googleLogin: (accessToken: string) => requests.post<User>(`/account/googleLogin?accessToken=${accessToken}`, {}),
+  refreshAppUserToken: () => requests.post<User>('/account/refereshAppUserToken', {}),
 };
 
 const Session = {
-    createSession: (createSession: SessionFormValues) => requests.post('/session/createSession', createSession),
-    getSessions: () => requests.get('/session/getSessions'),
-    deleteSession: (id: string) => requests.del(`/session/deleteSession/${id}`),
-    getSession: (id: string) => requests.get(`/session/getSession/${id}`),
-    updateSession: (id: string, updateSession: SessionFormValues) => requests.put(`/session/updateSession/${id}`, updateSession),
+    createSession: (createSession: SessionFormValues) => requests.post<Session>('/session/createSession', createSession),
+    getSessions: () => requests.get<Session[]>('/session/getSessions'),
+    deleteSession: (id: string) => requests.del<void>(`/session/deleteSession/${id}`),
+    getSession: (id: string) => requests.get<Session>(`/session/getSession/${id}`),
+    updateSession: (id: string, updateSession: SessionFormValues) => requests.put<Session>(`/session/updateSession/${id}`, updateSession),
+    getCurrentSession: () => requests.get<Session>('/session/getCurrentSession'),
+    refreshLinkToken: (sessionId: string) => requests.post<Session>(`/session/refereshLinkToken/${sessionId}`, {}),
 };
-
 
 const agent = {
     Attendance,
