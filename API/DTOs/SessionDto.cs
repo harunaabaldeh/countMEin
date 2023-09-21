@@ -1,10 +1,15 @@
 namespace API.DTOs;
 
-public class SessionDto : CreateSessionDto
+public class SessionDto
 {
     public string SessionId { get; set; }
+    public string SessionName { get; set; }
+    public DateTime SessionExpiresAt { get; set; }
     public string HostName { get; set; }
-    public string Token { get; set; } = string.Empty;
-    public DateTime LinkExpiresAt { get; set; }
+    public string LinkToken { get; set; } = string.Empty;
+    public int AttendeesCount { get; set; }
+    public string Status { get; set; }
+    public bool RegenerateLinkToken { get; set; }
+    public int LinkExpiryFreequency { get; set; }
 
 }

@@ -3,6 +3,7 @@ export interface User {
     token: string;
     username: string;
     profileImageUrl: string;
+    roles?: string[] 
 }
 
 export interface UserSignInForm {

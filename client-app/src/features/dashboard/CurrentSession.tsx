@@ -1,18 +1,124 @@
+import QRCode from "react-qr-code";
+import agent from "../../app/api/agent";
+import { useEffect, useState } from "react";
+import { Session } from "../../app/models/session";
+import { useLocation } from "react-router-dom";
+import AppLoading from "../../app/components/AppLoading";
+
 function CurrentSession() {
+  const [session, setSession] = useState<Session | null>(null);
+  const [isCopied, setIsCopied] = useState(false);
+  const [loading, setLoading] = useState(false);
+  const { state } = useLocation();
+
+  const [hostURL, setHostURL] = useState("");
+
+  useEffect(() => {
+    const baseUrl = window.location.origin;
+    setHostURL(baseUrl);
+  }, [window.location.search, window.location.origin, setHostURL, state]);
+
+  const copyToClipboard = () => {
+    if (session?.linkToken) {
+      navigator.clipboard.writeText(
+        // import.meta.env.VITE_CLIENT_URL + "?linkToken=" + session?.linkToken
+        hostURL + "?linkToken=" + session?.linkToken
+      );
+    } else {
+      navigator.clipboard.writeText(hostURL);
+    }
+    setIsCopied(true);
+  };
+
+  useEffect(() => {
+    if (session && session.regenerateLinkToken) {
+      var interval = setInterval(async () => {
+        try {
+          const result = await agent.Session.refreshLinkToken(
+            session.sessionId
+          );
+          setSession(result);
+          console.log("====================================");
+          console.log("refreshed link token!", result);
+          console.log("====================================");
+        } catch (error) {
+          console.log(error);
+        }
+      }, session.linkExpiryFreequency * 1000 - 1000);
+    }
+
+    return () => {
+      clearInterval(interval);
+    };
+  }, [session]);
+
+  useEffect(() => {
+    if (isCopied) {
+      const timeout = setTimeout(() => {
+        setIsCopied(false);
+      }, 2000);
+
+      return () => clearTimeout(timeout);
+    }
+  }, [isCopied]);
+
+  useEffect(() => {
+    const getCurrentSession = async () => {
+      try {
+        setLoading(true);
+        const currentSession = await agent.Session.getCurrentSession();
+        setSession(currentSession);
+      } catch (error) {
+        console.log(error);
+      } finally {
+        setLoading(false);
+      }
+    };
+
+    if (state && state.from) {
+      setSession(state.from);
+    } else {
+      getCurrentSession();
+    }
+  }, []);
+
+  if (loading) {
+    return <AppLoading />;
+  }
+
   return (
     <>
       <div className="font-medium text-gray-900 text-left px-6">
-        This session will expire in 2 hours
+        {session ? (
+          <>
+            <div className="flex items-center justify-between">
+              <h2 className="text-lg font-semibold">{session.sessionName}</h2>
+              <span className="text-sm text-gray-400">
+                Expires at {session.sessionExpiresAt.toString()}
+              </span>
+            </div>
+          </>
+        ) : (
+          <h2 className="text-lg font-semibold">
+            No active session yet, create one!
+          </h2>
+        )}
       </div>
       <div className="mt-5 w-full flex flex-col items-center overflow-hidden text-sm">
         <div className="w-80 bg-white p-3 border-2 border-black-500">
-          <img
+          <QRCode
             className="w-full h-full object-cover"
-            src="/images/placeholder_qrcode.jpg"
+            value={
+              hostURL +
+              (session?.linkToken ? "?linkToken=" + session?.linkToken : " ")
+            }
           />
         </div>
-        <button className="w-80 my-4 text-gray-200 block rounded-lg text-center leading-6 px-6 py-3 bg-gray-900 hover:bg-black hover:text-white font-medium">
-          Copy url to clipboard
+        <button
+          onClick={copyToClipboard}
+          className="w-80 my-4 text-gray-200 block rounded-lg text-center leading-6 px-6 py-3 bg-slate-600 hover:bg-slate-700 hover:text-white font-medium transition-colors"
+        >
+          {isCopied ? "Copied!" : "Copy to clipboard"}
         </button>
       </div>
     </>

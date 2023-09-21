@@ -1,10 +1,15 @@
+using System.ComponentModel.DataAnnotations;
 using Microsoft.AspNetCore.Identity;
 
 namespace API.Entities;
 public class AppUser : IdentityUser
 {
-    public string DisplayName { get; set; }
-    public string? ProfileImageUrl { get; set; }
-    public ICollection<Session> AttendantLinks { get; set; } = new List<Session>();
+    [Required]
+    public string FirstName { get; set; }
+    [Required]
+    public string LastName { get; set; }
+    public string ProfileImageUrl { get; set; }
+    public ICollection<Session> Sessions { get; set; } = new List<Session>();
+    public ICollection<RefereshAppUserToken> RefreshAppUserTokens { get; set; } = new List<RefereshAppUserToken>();
 
 }

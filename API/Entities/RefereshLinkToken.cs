@@ -3,10 +3,10 @@ namespace API.Entities
     public class RefereshLinkToken
     {
         public int Id { get; set; }
-        public Guid AttendantLinkId { get; set; }
-        public Session AttendantLink { get; set; }
+        public Guid SessionId { get; set; }
+        public Session Session { get; set; }
         public string Token { get; set; }
-        public DateTime Expires { get; set; } = DateTime.UtcNow.AddMinutes(10);
+        public DateTime Expires { get; set; }
 
         public bool IsExpired => DateTime.UtcNow >= Expires;
 

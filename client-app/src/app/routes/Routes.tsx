@@ -1,6 +1,6 @@
 import { RouteObject, createBrowserRouter } from "react-router-dom";
 import Login from "../../features/account/Login";
-import Home from "../../features/attendant/Home";
+import Home from "../../features/attendee/Home";
 import SessionDetails from "../../features/dashboard/SessionDetails";
 import SessionHistory from "../../features/dashboard/SessionHistory";
 import UserProfile from "../../features/dashboard/UserProfile";
@@ -9,15 +9,24 @@ import GenerateQRCodeForm from "../../features/dashboard/GenerateQRCodeForm";
 import CurrentSession from "../../features/dashboard/CurrentSession";
 import SignUp from "../../features/account/SignUp";
 import AuthRoutes from "./AuthRoutes";
+import AttendanceRoutes from "./AttendanceRoutes";
+import NotFound from "../../features/Errors/NotFound";
+import TestErrors from "../../features/Errors/TestErrors";
+import ServerError from "../../features/Errors/ServerError";
 
-export const routes: RouteObject[] = [
+export const Routes: RouteObject[] = [
   {
     path: "/",
     element: <App />,
     children: [
       {
-        path: "/",
-        element: <Home />,
+        element: <AttendanceRoutes />,
+        children: [
+          {
+            path: "/",
+            element: <Home />,
+          },
+        ],
       },
       {
         path: "/login",
@@ -57,15 +66,29 @@ export const routes: RouteObject[] = [
       },
 
       {
+        element: <AuthRoutes roles={["Admin"]} />,
+        children: [
+          {
+            path: "/test-errors",
+            element: <TestErrors />,
+          },
+          {
+            path: "/server-error",
+            element: <ServerError />,
+          },
+        ],
+      },
+
+      {
         path: "/session-details/:id",
         element: <SessionDetails />,
       },
       {
         path: "*",
-        element: <h1>404</h1>,
+        element: <NotFound />,
       },
     ],
   },
 ];
 
-export const router = createBrowserRouter(routes);
+export const router = createBrowserRouter(Routes);

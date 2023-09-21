@@ -15,18 +15,16 @@ namespace API.Controllers;
 public class SessionController : BaseApiController
 {
     private readonly ApplicationDbContext _context;
-    private readonly IConfiguration _config;
     private readonly UserManager<AppUser> _userManager;
     private readonly TokenService _tokenService;
     private readonly IMapper _mapper;
 
-    public SessionController(ApplicationDbContext context, IConfiguration config, UserManager<AppUser> userManager, TokenService tokenService, IMapper mapper)
+    public SessionController(ApplicationDbContext context, UserManager<AppUser> userManager, TokenService tokenService, IMapper mapper)
     {
         _mapper = mapper;
         _tokenService = tokenService;
         _userManager = userManager;
         _context = context;
-        _config = config;
     }
 
     [Authorize]
@@ -35,32 +33,22 @@ public class SessionController : BaseApiController
     {
         var user = await _userManager.FindByEmailAsync(User.FindFirstValue(ClaimTypes.Email));
 
-        //create a new attendance link
-        var attendanceLink = new Session
+        var session = new Session
         {
             SessionName = createSessionDto.SessionName,
             SessionExpiresAt = DateTime.UtcNow.AddMinutes(30),
             Host = user!,
+            LinkExpiryFreequency = createSessionDto.LinkExpiryFreequency < 30 ? 30 : createSessionDto.LinkExpiryFreequency,
+            RegenerateLinkToken = createSessionDto.RegenerateLinkToken,
         };
 
-        //add the attendance link to the database
-        _context.AttendantLinks.Add(attendanceLink);
+        _context.Sessions.Add(session);
         await _context.SaveChangesAsync();
 
-        var token = await _tokenService.CreateAttendanceLinkToken(attendanceLink);
+        await SetRefereshLinkTokenCookie(session);
+        var token = _tokenService.CreateAttendanceLinkToken(session);
 
-        //create a new attendance link dto
-        var attendantLinkDto = new SessionDto
-        {
-            SessionId = attendanceLink.Id.ToString(),
-            SessionName = attendanceLink.SessionName,
-            SessionExpiresAt = attendanceLink.SessionExpiresAt,
-            LinkExpiresAt = DateTime.UtcNow.AddMinutes(createSessionDto.LinkExpiryFreequency ?? attendanceLink.SessionExpiresAt.Minute),
-            HostName = attendanceLink.Host.DisplayName,
-            Token = token
-        };
-
-        return attendantLinkDto;
+        return _mapper.Map<SessionDto>(session, opt => opt.Items["LinkToken"] = token);
     }
 
     [Authorize]
@@ -69,20 +57,20 @@ public class SessionController : BaseApiController
     {
         var user = await _userManager.FindByEmailAsync(User.FindFirstValue(ClaimTypes.Email));
 
-        var attendanceLink = await _context.AttendantLinks
+        var session = await _context.Sessions
             .FirstOrDefaultAsync(x => x.Id == Guid.Parse(sessionId));
 
-        if (attendanceLink == null)
+        if (session == null)
         {
             return BadRequest("Invalid session id");
         }
 
-        if (attendanceLink.Host != user)
+        if (session.Host != user)
         {
             return Unauthorized("You are not authorized to delete this session");
         }
 
-        _context.AttendantLinks.Remove(attendanceLink);
+        _context.Sessions.Remove(session);
         await _context.SaveChangesAsync();
 
         return Ok();
@@ -90,16 +78,79 @@ public class SessionController : BaseApiController
 
     [Authorize]
     [HttpGet("getSessions")]
-    public async Task<ActionResult<List<SessionDto>>> GetSessions()
+    public async Task<ActionResult<List<SessionsDto>>> GetSessions()
     {
         var user = await _userManager.FindByEmailAsync(User.FindFirstValue(ClaimTypes.Email));
 
-        return await _context.AttendantLinks
+        return await _context.Sessions
             .Include(x => x.Host)
+            .Include(x => x.Attendees)
             .Where(x => x.Host == user)
-            .ProjectTo<SessionDto>(_mapper.ConfigurationProvider)
+            .OrderByDescending(x => x.CreatedAt)
+            .ProjectTo<SessionsDto>(_mapper.ConfigurationProvider)
             .ToListAsync();
     }
 
+    [Authorize]
+    [HttpGet("getCurrentSession")]
+    public async Task<ActionResult<SessionDto>> GetCurrentSession()
+    {
+        var user = await _userManager.FindByEmailAsync(User.FindFirstValue(ClaimTypes.Email));
+
+        var session = await _context.Sessions
+            .Include(x => x.Host)
+            .OrderByDescending(x => x.CreatedAt)
+            .FirstOrDefaultAsync(x => x.Host == user);
+
+        if (session == null || session.SessionExpiresAt < DateTime.UtcNow)
+        {
+            return BadRequest("You do not have any active session");
+        }
+
+        await SetRefereshLinkTokenCookie(session);
+        var token = _tokenService.CreateAttendanceLinkToken(session);
+
+        return _mapper.Map<SessionDto>(session, opt => opt.Items["LinkToken"] = token);
+
+    }
+
+    [Authorize]
+    [HttpPost("refereshLinkToken/{sessionId}")]
+    public async Task<ActionResult<SessionDto>> RefereshLinkToken(string sessionId)
+    {
+        var refereshLinkToken = Request.Cookies["refereshLinkToken"];
+        var user = await _userManager.FindByEmailAsync(User.FindFirstValue(ClaimTypes.Email));
+
+        var session = await _context.Sessions
+            .Include(x => x.Host)
+            .FirstOrDefaultAsync(x => x.Id == Guid.Parse(sessionId) && x.HostId == user.Id);
+
+        if (session == null) return Unauthorized();
+
+        var oldToken = session.RefereshLinkTokens.SingleOrDefault(x => x.Token == refereshLinkToken);
+        if (oldToken != null && !oldToken.IsActive) return Unauthorized();
+
+        var token = _tokenService.CreateAttendanceLinkToken(session);
+
+        return _mapper.Map<SessionDto>(session, opt => opt.Items["LinkToken"] = token);
+    }
+
+    private async Task SetRefereshLinkTokenCookie(Session session)
+    {
+        var token = _tokenService.GenerateRefereshLinkToken(session);
+
+        session.RefereshLinkTokens.Add(token);
+        await _context.SaveChangesAsync();
+
+        var cookieOptions = new CookieOptions
+        {
+            HttpOnly = true,
+            Expires = DateTime.UtcNow.AddDays(7),
+            IsEssential = true
+        };
+
+        Response.Cookies.Append("refereshLinkToken", token.Token, cookieOptions);
+
+    }
 
 }

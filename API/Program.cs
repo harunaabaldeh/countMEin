@@ -1,6 +1,7 @@
 using System.Text;
 using API.Data;
 using API.Entities;
+using API.Middleware;
 using API.RequestHelpers;
 using API.Services;
 using Microsoft.AspNetCore.Authentication.JwtBearer;
@@ -47,7 +48,9 @@ builder.Services.AddCors(options =>
         builder => builder
         .WithOrigins("http://localhost:5173")
         .AllowAnyMethod()
-        .AllowAnyHeader());
+        .AllowCredentials()
+        .AllowAnyHeader()
+        .WithExposedHeaders("WWW-Authenticate"));
 });
 
 builder.Services.AddDbContext<ApplicationDbContext>(options =>
@@ -87,6 +90,8 @@ builder.Services.AddScoped<TokenService>();
 
 var app = builder.Build();
 
+app.UseMiddleware<ExceptionMiddleware>();
+
 // Configure the HTTP request pipeline.
 if (app.Environment.IsDevelopment())
 {
@@ -99,11 +104,13 @@ if (app.Environment.IsDevelopment())
 app.UseCors("CorsPolicy");
 
 app.UseHttpsRedirection();
-
+app.UseDefaultFiles();
+app.UseStaticFiles();
 app.UseAuthentication();
 app.UseAuthorization();
 
 app.MapControllers();
+app.MapFallbackToController("Index", "Fallback");
 
 using var scope = app.Services.CreateScope();
 var services = scope.ServiceProvider;

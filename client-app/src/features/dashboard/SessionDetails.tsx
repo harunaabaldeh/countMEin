@@ -1,8 +1,37 @@
-import { Link } from "react-router-dom";
+import { Link, useParams } from "react-router-dom";
 import AppPaginations from "../../app/components/AppPaginations";
 import AppTableHeader from "../../app/components/AppTableHeader";
+import { useEffect, useState } from "react";
+import { SessionAttendees } from "../../app/models/session";
+import AppLoading from "../../app/components/AppLoading";
+import agent from "../../app/api/agent";
 
 function SessionDetails() {
+  const [sessionDetails, setSessionDetails] = useState<SessionAttendees>();
+  const [loading, setLoading] = useState(false);
+
+  const { id } = useParams<{ id: string }>();
+
+  useEffect(() => {
+    const sesstionAttendees = async () => {
+      try {
+        setLoading(true);
+        const response = await agent.Attendance.getAttendees(id!);
+        console.log("====================================");
+        console.log(response);
+        console.log("====================================");
+        setSessionDetails(response);
+      } catch (error) {
+        console.log(error);
+      } finally {
+        setLoading(false);
+      }
+    };
+    sesstionAttendees();
+  }, [id]);
+
+  if (loading) return <AppLoading />;
+
   return (
     <div
       className="container mx-auto w-full md:w-11/12 "
@@ -25,15 +54,17 @@ function SessionDetails() {
         <div className="flex items-center">
           <div className="flex flex-col">
             <h1 className="text-2xl font-bold text-gray-700">
-              Management 101 Wednesday Morning
+              {sessionDetails?.sessionName}
             </h1>
-            <p className="text-sm font-medium text-gray-400">12th May, 2021</p>
+            <p className="text-sm font-medium text-gray-400">
+              {sessionDetails?.status}
+            </p>
           </div>
         </div>
         <div className="flex items-center mt-4 md:mt-0">
           <div className="flex flex-col">
             <h1 className="text-2xl font-bold text-gray-700">
-              {new Date().toISOString()}
+              {sessionDetails?.sessionExpiresAt}
             </h1>
             <p className="text-sm font-medium text-gray-400">
               Expires in 2 hours
@@ -58,32 +89,32 @@ function SessionDetails() {
             </tr>
           </thead>
           <tbody className="text-gray-600 text-sm font-light">
-            {Array.from(Array(10).keys()).map((_, index) => (
+            {sessionDetails?.attendees.map((attendee, index) => (
               <tr
                 key={index}
                 className="border-b border-gray-200 hover:bg-gray-100"
               >
                 <td className="py-3 px-6 text-left whitespace-nowrap">
                   <div className="flex items-center">
-                    <span className="font-medium">Fabala</span>
+                    <span className="font-medium">{attendee.firstName}</span>
                   </div>
                 </td>
 
                 <td className="py-3 px-6 text-left whitespace-nowrap">
                   <div className="flex items-center">
-                    <span className="font-medium">Dibbasey</span>
+                    <span className="font-medium">{attendee.lastName}</span>
                   </div>
                 </td>
 
                 <td className="py-3 px-6 text-center whitespace-nowrap">
                   <span className="py-1 px-3 rounded-full text-md font-medium">
-                    fd22014182@utg.edu.gm
+                    {attendee.email}
                   </span>
                 </td>
 
                 <td className="py-3 px-6 text-center whitespace-nowrap">
                   <span className="py-1 px-3 rounded-full text-md font-medium">
-                    22014182
+                    {attendee.matNumber}
                   </span>
                 </td>
 
@@ -95,7 +126,7 @@ function SessionDetails() {
                         src="/images/clock.svg"
                       />
                     </div>
-                    <span> {new Date().toISOString()} </span>
+                    <span>{attendee.createdAt}</span>
                   </div>
                 </td>
               </tr>

@@ -11,8 +11,8 @@ using Microsoft.EntityFrameworkCore.Storage.ValueConversion;
 namespace API.Data.Migrations
 {
     [DbContext(typeof(ApplicationDbContext))]
-    [Migration("20230912165431_Updated Entities")]
-    partial class UpdatedEntities
+    [Migration("20230921022358_initialMigrations")]
+    partial class initialMigrations
     {
         /// <inheritdoc />
         protected override void BuildTargetModel(ModelBuilder modelBuilder)
@@ -32,16 +32,18 @@ namespace API.Data.Migrations
                         .IsConcurrencyToken()
                         .HasColumnType("TEXT");
 
-                    b.Property<string>("DisplayName")
-                        .IsRequired()
-                        .HasColumnType("TEXT");
-
                     b.Property<string>("Email")
                         .HasMaxLength(256)
                         .HasColumnType("TEXT");
 
                     b.Property<bool>("EmailConfirmed")
                         .HasColumnType("INTEGER");
+
+                    b.Property<string>("FirstName")
+                        .HasColumnType("TEXT");
+
+                    b.Property<string>("LastName")
+                        .HasColumnType("TEXT");
 
                     b.Property<bool>("LockoutEnabled")
                         .HasColumnType("INTEGER");
@@ -91,75 +93,44 @@ namespace API.Data.Migrations
                     b.ToTable("AspNetUsers", (string)null);
                 });
 
-            modelBuilder.Entity("API.Entities.Attendant", b =>
+            modelBuilder.Entity("API.Entities.Attendee", b =>
                 {
                     b.Property<int>("Id")
                         .ValueGeneratedOnAdd()
                         .HasColumnType("INTEGER");
-
-                    b.Property<Guid>("AttendantLinkId")
-                        .HasColumnType("TEXT");
 
                     b.Property<DateTime>("CreatedAt")
                         .HasColumnType("TEXT");
 
                     b.Property<string>("Email")
-                        .IsRequired()
                         .HasColumnType("TEXT");
 
                     b.Property<string>("FirstName")
-                        .IsRequired()
                         .HasColumnType("TEXT");
 
                     b.Property<string>("LastName")
-                        .IsRequired()
                         .HasColumnType("TEXT");
 
                     b.Property<string>("MATNumber")
-                        .IsRequired()
+                        .HasColumnType("TEXT");
+
+                    b.Property<Guid>("SessionId")
                         .HasColumnType("TEXT");
 
                     b.HasKey("Id");
 
-                    b.HasIndex("AttendantLinkId");
+                    b.HasIndex("SessionId");
 
-                    b.ToTable("Attendants");
+                    b.ToTable("Attendees");
                 });
 
-            modelBuilder.Entity("API.Entities.AttendantLink", b =>
-                {
-                    b.Property<Guid>("Id")
-                        .ValueGeneratedOnAdd()
-                        .HasColumnType("TEXT");
-
-                    b.Property<DateTime>("CreatedAt")
-                        .HasColumnType("TEXT");
-
-                    b.Property<string>("HostId")
-                        .IsRequired()
-                        .HasColumnType("TEXT");
-
-                    b.Property<DateTime>("SessionExpiresAt")
-                        .HasColumnType("TEXT");
-
-                    b.Property<string>("SessionName")
-                        .IsRequired()
-                        .HasColumnType("TEXT");
-
-                    b.HasKey("Id");
-
-                    b.HasIndex("HostId");
-
-                    b.ToTable("AttendantLinks");
-                });
-
-            modelBuilder.Entity("API.Entities.RefereshLinkToken", b =>
+            modelBuilder.Entity("API.Entities.RefereshAppUserToken", b =>
                 {
                     b.Property<int>("Id")
                         .ValueGeneratedOnAdd()
                         .HasColumnType("INTEGER");
 
-                    b.Property<Guid>("AttendantLinkId")
+                    b.Property<string>("AppUserId")
                         .HasColumnType("TEXT");
 
                     b.Property<DateTime>("Expires")
@@ -169,14 +140,71 @@ namespace API.Data.Migrations
                         .HasColumnType("TEXT");
 
                     b.Property<string>("Token")
-                        .IsRequired()
                         .HasColumnType("TEXT");
 
                     b.HasKey("Id");
 
-                    b.HasIndex("AttendantLinkId");
+                    b.HasIndex("AppUserId");
+
+                    b.ToTable("RefereshAppUserToken");
+                });
+
+            modelBuilder.Entity("API.Entities.RefereshLinkToken", b =>
+                {
+                    b.Property<int>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("INTEGER");
+
+                    b.Property<DateTime>("Expires")
+                        .HasColumnType("TEXT");
+
+                    b.Property<DateTime?>("Revoked")
+                        .HasColumnType("TEXT");
+
+                    b.Property<Guid>("SessionId")
+                        .HasColumnType("TEXT");
+
+                    b.Property<string>("Token")
+                        .HasColumnType("TEXT");
+
+                    b.HasKey("Id");
+
+                    b.HasIndex("SessionId");
 
                     b.ToTable("RefereshLinkToken");
+                });
+
+            modelBuilder.Entity("API.Entities.Session", b =>
+                {
+                    b.Property<Guid>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("TEXT");
+
+                    b.Property<DateTime>("CreatedAt")
+                        .HasColumnType("TEXT");
+
+                    b.Property<string>("HostId")
+                        .HasColumnType("TEXT");
+
+                    b.Property<int>("LinkExpiryFreequency")
+                        .HasColumnType("INTEGER");
+
+                    b.Property<bool>("RegenerateLinkToken")
+                        .HasColumnType("INTEGER");
+
+                    b.Property<DateTime>("SessionExpiresAt")
+                        .HasColumnType("TEXT");
+
+                    b.Property<string>("SessionName")
+                        .IsRequired()
+                        .HasMaxLength(50)
+                        .HasColumnType("TEXT");
+
+                    b.HasKey("Id");
+
+                    b.HasIndex("HostId");
+
+                    b.ToTable("Sessions");
                 });
 
             modelBuilder.Entity("Microsoft.AspNetCore.Identity.IdentityRole", b =>
@@ -220,8 +248,8 @@ namespace API.Data.Migrations
                         new
                         {
                             Id = "3",
-                            Name = "Attendant",
-                            NormalizedName = "ATTENDANT"
+                            Name = "Attendee",
+                            NormalizedName = "Attendee"
                         });
                 });
 
@@ -327,37 +355,44 @@ namespace API.Data.Migrations
                     b.ToTable("AspNetUserTokens", (string)null);
                 });
 
-            modelBuilder.Entity("API.Entities.Attendant", b =>
+            modelBuilder.Entity("API.Entities.Attendee", b =>
                 {
-                    b.HasOne("API.Entities.AttendantLink", "AttendantLink")
-                        .WithMany("Attendants")
-                        .HasForeignKey("AttendantLinkId")
+                    b.HasOne("API.Entities.Session", "Session")
+                        .WithMany("Attendees")
+                        .HasForeignKey("SessionId")
                         .OnDelete(DeleteBehavior.Cascade)
                         .IsRequired();
 
-                    b.Navigation("AttendantLink");
+                    b.Navigation("Session");
                 });
 
-            modelBuilder.Entity("API.Entities.AttendantLink", b =>
+            modelBuilder.Entity("API.Entities.RefereshAppUserToken", b =>
                 {
-                    b.HasOne("API.Entities.AppUser", "Host")
-                        .WithMany("AttendantLinks")
-                        .HasForeignKey("HostId")
-                        .OnDelete(DeleteBehavior.Cascade)
-                        .IsRequired();
+                    b.HasOne("API.Entities.AppUser", "AppUser")
+                        .WithMany("RefreshAppUserTokens")
+                        .HasForeignKey("AppUserId");
 
-                    b.Navigation("Host");
+                    b.Navigation("AppUser");
                 });
 
             modelBuilder.Entity("API.Entities.RefereshLinkToken", b =>
                 {
-                    b.HasOne("API.Entities.AttendantLink", "AttendantLink")
+                    b.HasOne("API.Entities.Session", "Session")
                         .WithMany("RefereshLinkTokens")
-                        .HasForeignKey("AttendantLinkId")
+                        .HasForeignKey("SessionId")
                         .OnDelete(DeleteBehavior.Cascade)
                         .IsRequired();
 
-                    b.Navigation("AttendantLink");
+                    b.Navigation("Session");
+                });
+
+            modelBuilder.Entity("API.Entities.Session", b =>
+                {
+                    b.HasOne("API.Entities.AppUser", "Host")
+                        .WithMany("Sessions")
+                        .HasForeignKey("HostId");
+
+                    b.Navigation("Host");
                 });
 
             modelBuilder.Entity("Microsoft.AspNetCore.Identity.IdentityRoleClaim<string>", b =>
@@ -413,12 +448,14 @@ namespace API.Data.Migrations
 
             modelBuilder.Entity("API.Entities.AppUser", b =>
                 {
-                    b.Navigation("AttendantLinks");
+                    b.Navigation("RefreshAppUserTokens");
+
+                    b.Navigation("Sessions");
                 });
 
-            modelBuilder.Entity("API.Entities.AttendantLink", b =>
+            modelBuilder.Entity("API.Entities.Session", b =>
                 {
-                    b.Navigation("Attendants");
+                    b.Navigation("Attendees");
 
                     b.Navigation("RefereshLinkTokens");
                 });
