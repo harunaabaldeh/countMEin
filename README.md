@@ -7,15 +7,19 @@
 ## Key Features
 
 1. **Lecturer Signup:**
+
    - Lecturers can register to oversee student attendance.
 
 2. **QR Code Generation:**
+
    - Lecturers can create QR codes valid for the specified class session duration.
 
 3. **QR Code Display:**
+
    - Display the generated QR code for student scanning.
 
 4. **Attendee log:**
+
    - Students scan the QR code and their details
      - First name
      - Last name
@@ -24,6 +28,7 @@
    - will be collected and be sent to the event host (lecturer) for attendance purpose only.
 
 5. **Duplicate Prevention:**
+
    - Ensure one device records attendance for a unique student to prevent duplicates.
 
 6. **Notifications:**
@@ -55,5 +60,6 @@
 1. - [ ] **Miscellaneous Tasks**
 1. - [ ] **Real-time Notifications for New Attendees**
 1. - [ ] **Grouping and merging sessions/events**
+1. - [ ] \*\*Consider adding a background task to regenerate QR code link
 
 ...
