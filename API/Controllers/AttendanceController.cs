@@ -10,6 +10,8 @@ using Microsoft.AspNetCore.Identity;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.EntityFrameworkCore;
 using static Google.Apis.Auth.GoogleJsonWebSignature;
+using PdfSharp.Pdf;
+using PdfSharp.Drawing;
 
 namespace API.Controllers;
 
@@ -119,4 +121,35 @@ public partial class AttendanceController : BaseApiController
 
     [GeneratedRegex("\\d+")]
     private static partial Regex MyRegex();
+
+    [HttpGet("ExportToPdf")]
+    public async Task<IActionResult> ExportToPdf()
+    {
+        var attendees = await _context.Attendees.ToListAsync();
+
+        var pdf = new PdfDocument();
+        var page = pdf.AddPage();
+        var gfx = XGraphics.FromPdfPage(page);
+        var font = new XFont("Arial", 12);
+
+        int yPos = 50;
+
+        foreach (var attendee in attendees)
+        {
+            gfx.DrawString($"First Name: {attendee.FirstName}", font, XBrushes.Black, new XRect(50, yPos, page.Width, page.Height), XStringFormats.TopLeft);
+            yPos += 20;
+            gfx.DrawString($"Last Name: {attendee.LastName}", font, XBrushes.Black, new XRect(50, yPos, page.Width, page.Height), XStringFormats.TopLeft);
+            yPos += 20;
+            gfx.DrawString($"MAT Number: {attendee.MATNumber}", font, XBrushes.Black, new XRect(50, yPos, page.Width, page.Height), XStringFormats.TopLeft);
+            yPos += 20;
+            gfx.DrawString($"Email: {attendee.Email}", font, XBrushes.Black, new XRect(50, yPos, page.Width, page.Height), XStringFormats.TopLeft);
+            yPos += 40; // Add some space between attendees
+        }
+        var pdfStream = new MemoryStream();
+        pdf.Save(pdfStream, false);
+        pdfStream.Seek(0, SeekOrigin.Begin);
+
+        return File(pdfStream, "application/pdf", "Attendees.pdf");
+    }
 }
+
