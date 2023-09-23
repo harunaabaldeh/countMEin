@@ -122,29 +122,62 @@ public partial class AttendanceController : BaseApiController
     [GeneratedRegex("\\d+")]
     private static partial Regex MyRegex();
 
+
     [HttpGet("ExportToPdf")]
     public async Task<IActionResult> ExportToPdf()
     {
         var attendees = await _context.Attendees.ToListAsync();
-
         var pdf = new PdfDocument();
-        var page = pdf.AddPage();
-        var gfx = XGraphics.FromPdfPage(page);
-        var font = new XFont("Arial", 12);
 
-        int yPos = 50;
+        // font definitions
+        var normalFont = new XFont("Arial", 12);
+        var headerFont = new XFont("Arial", 18, XFontStyle.Bold);
+        var columnheaderFont = new XFont("Arial", 14, XFontStyle.Bold);
 
-        foreach (var attendee in attendees)
+        // page configuration
+        int currentAttendeeIndex = 0;
+        int attendeesPerPage = 2;
+        int totalPages = (int)Math.Ceiling((double)attendees.Count / attendeesPerPage);
+
+        for (int pageIdx = 0; pageIdx < totalPages; pageIdx++)
         {
-            gfx.DrawString($"First Name: {attendee.FirstName}", font, XBrushes.Black, new XRect(50, yPos, page.Width, page.Height), XStringFormats.TopLeft);
+            var page = pdf.AddPage();
+            var gfx = XGraphics.FromPdfPage(page);
+            int yPos = 50;
+
+            // divide the page into four columns
+            double columnWidth = (page.Width - 5) / 4;
+
+            // Width for the "#" column
+            double numberColumnWidth = 5; 
+
+            // Header
+            gfx.DrawString("Attendees", headerFont, XBrushes.Black, new XRect(0, yPos, page.Width, page.Height), XStringFormats.TopCenter);
+            yPos += 50;
+
+            // Column headers
+            gfx.DrawString("#", columnheaderFont, XBrushes.Black, new XRect(5, yPos, numberColumnWidth, page.Height), XStringFormats.TopLeft);
+            gfx.DrawString("First Name", columnheaderFont, XBrushes.Black, new XRect(30, yPos, columnWidth, page.Height), XStringFormats.TopLeft);
+            gfx.DrawString("Last Name", columnheaderFont, XBrushes.Black, new XRect(170, yPos, columnWidth, page.Height), XStringFormats.TopLeft);
+            gfx.DrawString("MAT Number", columnheaderFont, XBrushes.Black, new XRect(310, yPos, columnWidth, page.Height), XStringFormats.TopLeft);
+            gfx.DrawString("Email", columnheaderFont, XBrushes.Black, new XRect(450, yPos, columnWidth, page.Height), XStringFormats.TopLeft);
             yPos += 20;
-            gfx.DrawString($"Last Name: {attendee.LastName}", font, XBrushes.Black, new XRect(50, yPos, page.Width, page.Height), XStringFormats.TopLeft);
-            yPos += 20;
-            gfx.DrawString($"MAT Number: {attendee.MATNumber}", font, XBrushes.Black, new XRect(50, yPos, page.Width, page.Height), XStringFormats.TopLeft);
-            yPos += 20;
-            gfx.DrawString($"Email: {attendee.Email}", font, XBrushes.Black, new XRect(50, yPos, page.Width, page.Height), XStringFormats.TopLeft);
-            yPos += 40; // Add some space between attendees
+
+            // Attendees data
+            for (int i = 0; i < attendeesPerPage && currentAttendeeIndex < attendees.Count; i++)
+            {
+                var attendee = attendees[currentAttendeeIndex];
+
+                gfx.DrawString($"{currentAttendeeIndex + 1}", normalFont, XBrushes.Black, new XRect(5, yPos, numberColumnWidth, page.Height), XStringFormats.TopLeft);
+                gfx.DrawString($"{attendee.FirstName}", normalFont, XBrushes.Black, new XRect(30, yPos, columnWidth, page.Height), XStringFormats.TopLeft);
+                gfx.DrawString($"{attendee.LastName}", normalFont, XBrushes.Black, new XRect(170, yPos, columnWidth, page.Height), XStringFormats.TopLeft);
+                gfx.DrawString($"{attendee.MATNumber}", normalFont, XBrushes.Black, new XRect(310, yPos, columnWidth, page.Height), XStringFormats.TopLeft);
+                gfx.DrawString($"{attendee.Email}", normalFont, XBrushes.Black, new XRect(450, yPos, columnWidth, page.Height), XStringFormats.TopLeft);
+                yPos += 25; // Add some space between attendees
+                currentAttendeeIndex++;
+            }
         }
+
         var pdfStream = new MemoryStream();
         pdf.Save(pdfStream, false);
         pdfStream.Seek(0, SeekOrigin.Begin);
