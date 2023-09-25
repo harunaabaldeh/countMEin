@@ -1,4 +1,5 @@
 using System.Security.Claims;
+using System.Text;
 using System.Text.RegularExpressions;
 using API.Data;
 using API.DTOs;
@@ -133,4 +134,23 @@ public partial class AttendanceController : BaseApiController
 
     [GeneratedRegex("\\d+")]
     private static partial Regex MyRegex();
+
+    [HttpGet("ExportToCsv")]
+    public async Task<ActionResult> SaveToCSV()
+    {
+        var csvData = new StringBuilder();
+
+        csvData.AppendLine("FirstName,LastName,MATNumber,Email");
+
+        var attendees = await _context.Attendees.ToListAsync();
+
+        foreach (var attendee in attendees)
+        {
+            csvData.AppendLine($"{attendee.FirstName},{attendee.LastName},{attendee.MATNumber},{attendee.Email}");
+        }
+
+        var csvBtes = Encoding.UTF8.GetBytes(csvData.ToString());
+
+        return File(csvBtes, "text/csv", "Attendees.csv");
+    }
 }

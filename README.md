@@ -46,7 +46,7 @@
 1. - [x] **User (Host) Registration and Login**
 1. - [x] **Guest Attendance Management and QR Code Regeneration**
 1. - [ ] **Pagination, Sorting, and Filtering Implementation**
-1. - [ ] **Export Functionality for Attendee Data in PDF, Excel, or CSV**
+1. - [ ] **Export Functionality for Attendee Data in PDF, Excel, or CSV** - Cherno Alieu Cham
 1. - [x] **Exception Handling and Error Handling**
 1. - [ ] **Initial Staging Version Deployment**
 1. - [ ] **UI Enhancement**
