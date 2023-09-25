@@ -29,14 +29,14 @@ function GenerateQRCodeForm() {
       const getSession = async () => {
         try {
           setLoading(true);
-          const session = await agent.Session.getSession(id);
-          if (session) {
+          const getSession = await agent.Session.getSession(id);
+          if (getSession) {
             const {
               sessionName,
               sessionExpiresAt,
               regenerateLinkToken,
               linkExpiryFreequency,
-            } = session;
+            } = getSession;
             reset({
               sessionName,
               sessionExpiresAt: new Date(sessionExpiresAt)
@@ -64,7 +64,7 @@ function GenerateQRCodeForm() {
       regenerateLinkToken,
     } = data as SessionFormValues;
 
-    let session: SessionFormValues = {
+    let formSession: SessionFormValues = {
       sessionName,
       sessionExpiresAt,
       regenerateLinkToken: !regenerateLinkToken,
@@ -74,10 +74,13 @@ function GenerateQRCodeForm() {
     try {
       setLoading(true);
       if (id) {
-        const updatedSession = await agent.Session.updateSession(id, session);
+        const updatedSession = await agent.Session.updateSession(
+          id,
+          formSession
+        );
         setSession(updatedSession);
       } else {
-        const newSession = await agent.Session.createSession(session);
+        const newSession = await agent.Session.createSession(formSession);
         setSession(newSession);
       }
     } catch (error) {
