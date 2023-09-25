@@ -5,9 +5,12 @@ import { useEffect, useState } from "react";
 import { SessionAttendees } from "../../app/models/session";
 import AppLoading from "../../app/components/AppLoading";
 import agent from "../../app/api/agent";
+import { MetaData } from "../../app/models/pagination";
+import { getAxiosParams } from "../../app/utils";
 
 function SessionDetails() {
   const [sessionDetails, setSessionDetails] = useState<SessionAttendees>();
+  const [metaData, setMetaData] = useState<MetaData>();
   const [loading, setLoading] = useState(false);
 
   const { id } = useParams<{ id: string }>();
@@ -17,10 +20,8 @@ function SessionDetails() {
       try {
         setLoading(true);
         const response = await agent.Attendance.getAttendees(id!);
-        console.log("====================================");
-        console.log(response);
-        console.log("====================================");
-        setSessionDetails(response);
+        setSessionDetails(response.items as unknown as SessionAttendees);
+        setMetaData(response.metaData);
       } catch (error) {
         console.log(error);
       } finally {
@@ -29,6 +30,43 @@ function SessionDetails() {
     };
     sesstionAttendees();
   }, [id]);
+
+  const handlePageChange = async (page: number, pageSize?: number) => {
+    const params = getAxiosParams({
+      pageNumber: page,
+      pageSize: pageSize || metaData!.pageSize,
+    });
+
+    try {
+      setLoading(true);
+      const response = await agent.Attendance.getAttendees(id!, params);
+      setSessionDetails(response.items as unknown as SessionAttendees);
+      setMetaData(response.metaData);
+    } catch (error) {
+      console.log(error);
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  const handleSearch = async (searchTerm: string) => {
+    const params = getAxiosParams({
+      pageNumber: 1,
+      pageSize: metaData!.pageSize,
+      searchTerm,
+    });
+
+    try {
+      setLoading(true);
+      const response = await agent.Attendance.getAttendees(id!, params);
+      setSessionDetails(response.items as unknown as SessionAttendees);
+      setMetaData(response.metaData);
+    } catch (error) {
+      console.log(error);
+    } finally {
+      setLoading(false);
+    }
+  };
 
   if (loading) return <AppLoading />;
 
@@ -74,7 +112,13 @@ function SessionDetails() {
       </div>
 
       <div className="w-full md:w-11/12 mx-auto">
-        <AppTableHeader />
+        {metaData && (
+          <AppTableHeader
+            onPageSizeChange={(pageSize) => handlePageChange(1, pageSize)}
+            onSearch={(search) => handleSearch(search)}
+            metaData={metaData!}
+          />
+        )}
       </div>
 
       <div className="bg-white shadow-md rounded my-6 overflow-x-auto w-full md:w-11/12 mx-auto">
@@ -135,14 +179,18 @@ function SessionDetails() {
         </table>
       </div>
 
-      <div className="mt-6 md:flex md:items-center md:justify-between w-full md:w-11/12 mx-auto">
-        <AppPaginations />
-        <div className="flex items-center mt-4 md:mt-0">
+      <div className="w-full md:w-11/12 mx-auto">
+        {metaData && (
+          <AppPaginations
+            metaData={metaData!}
+            onPageChange={(page) => handlePageChange(page)}
+          />
+        )}
+        <div className="flex w-full justify-end items-center mt-4 md:mt-0">
           <span className="mr-2 text-gray-700">Export to</span>
           <select className="border border-gray-300 rounded-md text-gray-600 h-9 pl-5 pr-10 bg-white hover:border-gray-400 focus:outline-none appearance-none">
             <option>Excel</option>
             <option>PDF</option>
-            <option>CSV</option>
           </select>
           <button
             className="

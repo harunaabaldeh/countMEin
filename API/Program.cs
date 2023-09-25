@@ -50,7 +50,7 @@ builder.Services.AddCors(options =>
         .AllowAnyMethod()
         .AllowCredentials()
         .AllowAnyHeader()
-        .WithExposedHeaders("WWW-Authenticate"));
+        .WithExposedHeaders("WWW-Authenticate", "Pagination"));
 });
 
 builder.Services.AddDbContext<ApplicationDbContext>(options =>

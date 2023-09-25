@@ -53,7 +53,7 @@ export const Routes: RouteObject[] = [
                 element: <CurrentSession />,
               },
               {
-                path: "/user-profile/generate-qr-code",
+                path: "/user-profile/generate-qr-code/:id?",
                 element: <GenerateQRCodeForm />,
               },
               {
