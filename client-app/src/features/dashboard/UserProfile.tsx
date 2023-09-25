@@ -6,36 +6,38 @@ import { User } from "../../app/models/user";
 function UserProfile() {
   const navigate = useNavigate();
   const user = JSON.parse(localStorage.getItem("user")!) as User;
+  let refreshTokenTimeout: any;
 
   useEffect(() => {
-    const interval =
-      JSON.parse(atob(user.token.split(".")[1])).exp * 1000 - Date.now();
-
-    const refereshUserTokenTimer = setInterval(async () => {
-      try {
-        const user = await agent.Account.refreshAppUserToken();
-        if (user) {
-          localStorage.setItem("user", JSON.stringify(user));
-        }
-      } catch (error) {
-        console.log(error);
-      }
-    }, interval - 1000 * 60);
-
+    refreshTokenTimer(user);
     return () => {
-      clearInterval(refereshUserTokenTimer);
+      stopRefreshTokenTimer();
     };
-  }, [
-    user.token,
-    user,
-    navigate,
-    localStorage,
-    agent.Account,
-    atob,
-    JSON,
-    setInterval,
-    clearInterval,
-  ]);
+  }, [user]);
+
+  const refreshToken = async () => {
+    stopRefreshTokenTimer();
+    try {
+      const user = await agent.Account.refreshAppUserToken();
+      if (user) {
+        localStorage.setItem("user", JSON.stringify(user));
+        refreshTokenTimer(user);
+      }
+    } catch (error) {
+      console.log(error);
+    }
+  };
+
+  function refreshTokenTimer(user: User) {
+    const jwtToken = JSON.parse(atob(user.token.split(".")[1]));
+    const expires = new Date(jwtToken.exp * 1000);
+    const timeout = expires.getTime() - Date.now() - 50 * 1000;
+    refreshTokenTimeout = setTimeout(refreshToken, timeout);
+  }
+
+  function stopRefreshTokenTimer() {
+    clearTimeout(refreshTokenTimeout);
+  }
 
   return (
     <div className="container mx-auto">

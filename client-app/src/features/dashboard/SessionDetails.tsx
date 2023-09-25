@@ -12,6 +12,7 @@ function SessionDetails() {
   const [sessionDetails, setSessionDetails] = useState<SessionAttendees>();
   const [metaData, setMetaData] = useState<MetaData>();
   const [loading, setLoading] = useState(false);
+  const [exportType, setExportType] = useState("Excel");
 
   const { id } = useParams<{ id: string }>();
 
@@ -61,6 +62,35 @@ function SessionDetails() {
       const response = await agent.Attendance.getAttendees(id!, params);
       setSessionDetails(response.items as unknown as SessionAttendees);
       setMetaData(response.metaData);
+    } catch (error) {
+      console.log(error);
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  const handleExport = async (exportType: string) => {
+    try {
+      setLoading(true);
+      if (exportType === "Excel") {
+        const response = await agent.Attendance.exportToCSV(id!);
+        const url = URL.createObjectURL(new Blob([response]));
+        const link = document.createElement("a");
+        link.href = url;
+        link.setAttribute("download", sessionDetails?.sessionName! + ".csv");
+        document.body.appendChild(link);
+        link.click();
+        link.remove();
+      } else {
+        const response = await agent.Attendance.exportToPDF(id!);
+        const url = URL.createObjectURL(new Blob([response]));
+        const link = document.createElement("a");
+        link.href = url;
+        link.setAttribute("download", sessionDetails?.sessionName! + ".pdf");
+        document.body.appendChild(link);
+        link.click();
+        link.remove();
+      }
     } catch (error) {
       console.log(error);
     } finally {
@@ -188,11 +218,16 @@ function SessionDetails() {
         )}
         <div className="flex w-full justify-end items-center mt-4 md:mt-0">
           <span className="mr-2 text-gray-700">Export to</span>
-          <select className="border border-gray-300 rounded-md text-gray-600 h-9 pl-5 pr-10 bg-white hover:border-gray-400 focus:outline-none appearance-none">
-            <option>Excel</option>
-            <option>PDF</option>
+          <select
+            onChange={(e) => setExportType(e.target.value)}
+            value={exportType}
+            className="border border-gray-300 rounded-md text-gray-600 h-9 pl-5 pr-10 bg-white hover:border-gray-400 focus:outline-none appearance-none"
+          >
+            <option value={"Excel"}>Excel</option>
+            <option value={"PDF"}>PDF</option>
           </select>
           <button
+            onClick={() => handleExport(exportType)}
             className="
                 ml-2
                 flex

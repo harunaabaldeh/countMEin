@@ -135,16 +135,26 @@ public partial class AttendanceController : BaseApiController
     [GeneratedRegex("\\d+")]
     private static partial Regex MyRegex();
 
-    [HttpGet("ExportToCsv")]
-    public async Task<ActionResult> SaveToCSV()
+    [Authorize]
+    [HttpGet("ExportToCsv/{sessionId}")]
+    public async Task<ActionResult> SaveToCSV(string sessionId)
     {
+        var user = await _userManager.FindByEmailAsync(User.FindFirstValue(ClaimTypes.Email));
+
+        var session = await _context.Sessions
+            .Include(x => x.Attendees)
+            .Include(x => x.Host)
+            .Where(x => x.Id == Guid.Parse(sessionId) && x.Host == user)
+            .AsNoTracking()
+            .FirstOrDefaultAsync();
+
+        if (session == null) return BadRequest("Invalid session id");
+
         var csvData = new StringBuilder();
 
         csvData.AppendLine("FirstName,LastName,MATNumber,Email");
 
-        var attendees = await _context.Attendees.ToListAsync();
-
-        foreach (var attendee in attendees)
+        foreach (var attendee in session.Attendees)
         {
             csvData.AppendLine($"{attendee.FirstName},{attendee.LastName},{attendee.MATNumber},{attendee.Email}");
         }

@@ -196,6 +196,7 @@ public class SessionController : BaseApiController
         if (session == null) return Unauthorized();
 
         session.SessionName = request.SessionName;
+        session.SessionExpiresAt = request.SessionExpiresAt;
         session.LinkExpiryFreequency = request.LinkExpiryFreequency < 30 ? 30 : request.LinkExpiryFreequency;
         session.RegenerateLinkToken = request.RegenerateLinkToken;
 

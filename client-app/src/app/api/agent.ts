@@ -103,6 +103,8 @@ const requests = {
 const Attendance = {
     createAttendee: (sessionId: string, accessToken: string, linkToken: string) => requests.post<Attendee>(`/attendance/createAttendee/${sessionId}?accessToken=${accessToken}&linkToken=${linkToken}`, {}),
     getAttendees: (sessionId: string, params?: URLSearchParams) => requests.get<Pagination<SessionAttendees>>(`/attendance/sessionAttendees/${sessionId}`, params),
+    exportToCSV: (sessionId: string) => requests.get<Blob>(`/attendance/exportToCSV/${sessionId}`),
+    exportToPDF: (sessionId: string) => requests.get<Blob>(`/attendance/exportToPDF/${sessionId}`),
 };
 
 const Account = {
