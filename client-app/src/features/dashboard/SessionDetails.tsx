@@ -7,6 +7,7 @@ import AppLoading from "../../app/components/AppLoading";
 import agent from "../../app/api/agent";
 import { MetaData } from "../../app/models/pagination";
 import { getAxiosParams } from "../../app/utils";
+import { formatDistanceToNow, format } from 'date-fns';
 
 function SessionDetails() {
   const [sessionDetails, setSessionDetails] = useState<SessionAttendees>();
@@ -132,7 +133,7 @@ function SessionDetails() {
         <div className="flex items-center mt-4 md:mt-0">
           <div className="flex flex-col">
             <h1 className="text-2xl font-bold text-gray-700">
-              {sessionDetails?.sessionExpiresAt}
+            {sessionDetails && format(new Date(sessionDetails.sessionExpiresAt), 'MMMM, EEEE do, h:mm a')}
             </h1>
             <p className="text-sm font-medium text-gray-400">
               Expires in 2 hours
@@ -200,7 +201,7 @@ function SessionDetails() {
                         src="/images/clock.svg"
                       />
                     </div>
-                    <span>{attendee.createdAt}</span>
+                    <span>{formatDistanceToNow(new Date(attendee.createdAt))} ago</span>
                   </div>
                 </td>
               </tr>
