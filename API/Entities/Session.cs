@@ -1,4 +1,5 @@
 using System.ComponentModel.DataAnnotations;
+using API.Enums;
 
 namespace API.Entities;
 public class Session
@@ -18,4 +19,8 @@ public class Session
     public List<Attendee> Attendees { get; set; } = new List<Attendee>();
 
     public List<RefereshLinkToken> RefereshLinkTokens { get; set; } = new List<RefereshLinkToken>();
+
+    public int AttendeesCount { get { return Attendees.Count; } }
+
+    public string Status { get { return SessionExpiresAt > DateTime.UtcNow ? SessionStatus.Active.ToString() : SessionStatus.Expired.ToString(); } }
 }

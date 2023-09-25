@@ -2,6 +2,8 @@ using System.Security.Claims;
 using API.Data;
 using API.DTOs;
 using API.Entities;
+using API.Extensions;
+using API.RequestHelpers;
 using API.Services;
 using AutoMapper;
 using AutoMapper.QueryableExtensions;
@@ -78,17 +80,45 @@ public class SessionController : BaseApiController
 
     [Authorize]
     [HttpGet("getSessions")]
-    public async Task<ActionResult<List<SessionsDto>>> GetSessions()
+    public async Task<ActionResult<PageList<SessionsDto>>> GetSessions([FromQuery] SessionParams sessionParams)
     {
         var user = await _userManager.FindByEmailAsync(User.FindFirstValue(ClaimTypes.Email));
 
-        return await _context.Sessions
+        var query = _context.Sessions
             .Include(x => x.Host)
             .Include(x => x.Attendees)
             .Where(x => x.Host == user)
-            .OrderByDescending(x => x.CreatedAt)
+            .SortSessions(sessionParams.OrderBy ?? "sessionCreatedAtDesc")
+            .SearchSessions(sessionParams.SearchTerm)
             .ProjectTo<SessionsDto>(_mapper.ConfigurationProvider)
-            .ToListAsync();
+            .AsNoTracking()
+            .AsQueryable();
+
+        var sessionsDtos = await PageList<SessionsDto>.CreateAsync(query, sessionParams.PageNumber, sessionParams.PageSize);
+
+        Response.AddPaginationHeader(sessionsDtos.MetaData);
+
+        return sessionsDtos;
+    }
+
+    [Authorize]
+    [HttpGet("getSession/{sessionId}")]
+    public async Task<ActionResult<SessionDto>> GetSession(string sessionId)
+    {
+        var user = await _userManager.FindByEmailAsync(User.FindFirstValue(ClaimTypes.Email));
+
+        var session = await _context.Sessions
+            .Include(x => x.Host)
+            .Where(x => x.Host == user && x.Id == Guid.Parse(sessionId))
+            .AsNoTracking()
+            .FirstOrDefaultAsync();
+
+        if (session == null) return BadRequest("Invalid session id");
+
+        await SetRefereshLinkTokenCookie(session);
+        var token = _tokenService.CreateAttendanceLinkToken(session);
+
+        return _mapper.Map<SessionDto>(session, opt => opt.Items["LinkToken"] = token);
     }
 
     [Authorize]
@@ -151,6 +181,30 @@ public class SessionController : BaseApiController
 
         Response.Cookies.Append("refereshLinkToken", token.Token, cookieOptions);
 
+    }
+
+    [Authorize]
+    [HttpPut("updateSession/{sessionId}")]
+    public async Task<ActionResult<SessionDto>> UpdateSession(string sessionId, CreateSessionDto request)
+    {
+        var user = await _userManager.FindByEmailAsync(User.FindFirstValue(ClaimTypes.Email));
+
+        var session = await _context.Sessions
+            .Include(x => x.Host)
+            .FirstOrDefaultAsync(x => x.Id == Guid.Parse(sessionId) && x.HostId == user.Id);
+
+        if (session == null) return Unauthorized();
+
+        session.SessionName = request.SessionName;
+        session.LinkExpiryFreequency = request.LinkExpiryFreequency < 30 ? 30 : request.LinkExpiryFreequency;
+        session.RegenerateLinkToken = request.RegenerateLinkToken;
+
+        await _context.SaveChangesAsync();
+
+        await SetRefereshLinkTokenCookie(session);
+        var token = _tokenService.CreateAttendanceLinkToken(session);
+
+        return _mapper.Map<SessionDto>(session, opt => opt.Items["LinkToken"] = token);
     }
 
 }

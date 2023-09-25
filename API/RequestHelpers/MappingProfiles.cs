@@ -2,6 +2,7 @@ using API.DTOs;
 using API.Entities;
 using API.Enums;
 using AutoMapper;
+using AutoMapper.QueryableExtensions;
 
 namespace API.RequestHelpers;
 
@@ -25,8 +26,8 @@ public class MappingProfiles : Profile
         CreateMap<Session, SessionsDto>()
         .ForMember(d => d.SessionId, o => o.MapFrom(s => s.Id.ToString()))
         .ForMember(d => d.HostName, o => o.MapFrom(s => s.Host.FirstName + " " + s.Host.LastName))
-        .ForMember(d => d.AttendeesCount, o => o.MapFrom(s => s.Attendees.Count))
-        .ForMember(d => d.Status, o => o.MapFrom(s => s.SessionExpiresAt > DateTime.UtcNow ? SessionStatus.Active.ToString() : SessionStatus.Expired.ToString()))
+        .ForMember(d => d.AttendeesCount, o => o.MapFrom(s => s.AttendeesCount))
+        .ForMember(d => d.Status, o => o.MapFrom(s => s.Status))
         .ForMember(d => d.SessionExpiresAt, o => o.MapFrom(s => s.SessionExpiresAt.ToLocalTime()));
 
         CreateMap<Session, SessionAttendeesDto>()
@@ -35,10 +36,27 @@ public class MappingProfiles : Profile
         .ForMember(d => d.AttendeesCount, o => o.MapFrom(s => s.Attendees.Count))
         .ForMember(d => d.Status, o => o.MapFrom(s => s.SessionExpiresAt > DateTime.UtcNow ? SessionStatus.Active.ToString() : SessionStatus.Expired.ToString()))
         .ForMember(d => d.SessionExpiresAt, o => o.MapFrom(s => s.SessionExpiresAt.ToLocalTime()));
+        // .ForMember(d => d.Attendees, o => o.MapFrom(s => s.Attendees.AsQueryable().ProjectTo<AttendeeDto>(_mapper.ConfigurationProvider)));
 
         CreateMap<AppUser, UserDto>()
         .ForMember(d => d.DisplayName, o => o.MapFrom(s => s.FirstName + " " + s.LastName))
         .ForMember(d => d.Token, o => o.MapFrom((s, d, _, ctx) => ctx.Items["AppUserToken"]));
+
+        CreateMap<Attendee, AttendeeDto>()
+        .ForMember(d => d.Id, o => o.MapFrom(s => s.Id))
+        .ForMember(d => d.FirstName, o => o.MapFrom(s => s.FirstName))
+        .ForMember(d => d.LastName, o => o.MapFrom(s => s.LastName))
+        .ForMember(d => d.Email, o => o.MapFrom(s => s.Email))
+        .ForMember(d => d.MATNumber, o => o.MapFrom(s => s.MATNumber))
+        .ForMember(d => d.CreatedAt, o => o.MapFrom(s => s.CreatedAt.ToLocalTime()));
+
+        CreateMap<AttendeeDto, Attendee>()
+        .ForMember(d => d.Id, o => o.MapFrom(s => s.Id))
+        .ForMember(d => d.FirstName, o => o.MapFrom(s => s.FirstName))
+        .ForMember(d => d.LastName, o => o.MapFrom(s => s.LastName))
+        .ForMember(d => d.Email, o => o.MapFrom(s => s.Email))
+        .ForMember(d => d.MATNumber, o => o.MapFrom(s => s.MATNumber))
+        .ForMember(d => d.CreatedAt, o => o.MapFrom(s => s.CreatedAt.ToLocalTime()));
 
     }
 }

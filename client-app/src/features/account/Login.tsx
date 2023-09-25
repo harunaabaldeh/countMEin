@@ -31,7 +31,6 @@ function Login() {
     try {
       const user = await agent.Account.login({ email, password });
       storeUser(user);
-      toast.success("Successfully logged in");
     } catch (error) {
       console.log(error);
       setError("Invalid email or password");
@@ -50,7 +49,20 @@ function Login() {
     // @ts-ignore
     google.accounts.id.renderButton(
       document.getElementById("buttonDiv"),
-      { theme: "outline", size: "large" } // customization attributes
+      {
+        theme: "outline",
+        size: "large",
+        type: "standard",
+        text: "sign_in_with", // can be either "sign_in_with" or "continue_with"
+        shape: "rectangular",
+        width: "250",
+        height: "200",
+        longtitle: true,
+        onsuccess: googleLogin,
+        onfailure: (error: any) => {
+          console.log(error);
+        },
+      } // customization attributes
     );
 
     // @ts-ignore
@@ -69,7 +81,6 @@ function Login() {
     try {
       const user = await agent.Account.googleLogin(response.credential);
       storeUser(user);
-      toast.success("Successfully logged in");
     } catch (error) {
       console.log(error);
     }
