@@ -8,6 +8,7 @@ import AppLoading from "../../app/components/AppLoading";
 import { MetaData } from "../../app/models/pagination";
 import { getAxiosParams } from "../../app/utils";
 import { confirmAlert } from "react-confirm-alert";
+import { format } from 'date-fns';
 
 function SessionHistory() {
   const [sessions, setSessions] = useState<Session[]>([]);
@@ -147,7 +148,7 @@ function SessionHistory() {
                         src="/images/clock.svg"
                       />
                     </div>
-                    <span> {session.sessionExpiresAt} </span>
+                    <span> {format(new Date(session.sessionExpiresAt), 'MMMM, EEEE do, h:mm a')} </span>
                   </div>
                 </td>
                 <td className="py-3 px-6 text-center">
