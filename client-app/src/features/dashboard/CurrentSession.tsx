@@ -38,9 +38,6 @@ function CurrentSession() {
             session.sessionId
           );
           setSession(result);
-          console.log("====================================");
-          console.log("refreshed link token!", result);
-          console.log("====================================");
         } catch (error) {
           console.log(error);
         }
@@ -75,8 +72,8 @@ function CurrentSession() {
       }
     };
 
-    if (state && state.from) {
-      setSession(state.from);
+    if (state && state.session) {
+      setSession(state.session);
     } else {
       getCurrentSession();
     }

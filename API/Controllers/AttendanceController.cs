@@ -1,11 +1,13 @@
+using System.Security.Claims;
 using System.Text;
 using System.Text.RegularExpressions;
 using API.Data;
 using API.DTOs;
 using API.Entities;
+using API.Extensions;
+using API.RequestHelpers;
 using API.Services;
 using AutoMapper;
-using AutoMapper.QueryableExtensions;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Identity;
 using Microsoft.AspNetCore.Mvc;
@@ -90,33 +92,45 @@ public partial class AttendanceController : BaseApiController
         };
 
         _context.Attendees.Add(attendee);
-        await _context.SaveChangesAsync();
+        var saved = await _context.SaveChangesAsync();
 
-        var attendeeDto = new AttendeeDto
-        {
-            FirstName = attendee.FirstName,
-            LastName = attendee.LastName,
-            Email = attendee.Email,
-            MATNumber = attendee.MATNumber,
-            SessionName = session.SessionName
-        };
+        if (saved < 1)
+            return BadRequest("Failed to create attendee");
 
-        return attendeeDto;
+        return _mapper.Map<AttendeeDto>(attendee);
     }
 
     [Authorize]
     [HttpGet("sessionAttendees/{sessionId}")]
-    public async Task<ActionResult<SessionAttendeesDto>> SessionAttendees(string sessionId)
+    public async Task<ActionResult<SessionAttendeesDto>> SessionAttendees(string sessionId, [FromQuery] SessionAttendeeParams sessionAttendeeParams)
     {
-        return await _context.Sessions
-            .Include(x => x.Attendees)
+        var user = await _userManager.FindByEmailAsync(User.FindFirstValue(ClaimTypes.Email));
+
+        var session = await _context.Sessions
             .Include(x => x.Host)
-            .OrderByDescending(x => x.CreatedAt)
-            .Where(x => x.Id == Guid.Parse(sessionId))
-            .ProjectTo<SessionAttendeesDto>(_mapper.ConfigurationProvider)
+            .Where(x => x.Host == user && x.Id == Guid.Parse(sessionId))
+            .AsNoTracking()
             .FirstOrDefaultAsync();
 
+        if (session == null) return BadRequest("Invalid session id");
+
+        var query = _context.Attendees
+            .Where(x => x.Session == session)
+            .SortSessionAttendees(sessionAttendeeParams.OrderBy ?? "attendeeCreatedAtDesc")
+            .SearchSessionAttendees(sessionAttendeeParams.SearchTerm)
+            .AsNoTracking()
+            .AsQueryable();
+
+        var attendees = await PageList<Attendee>.CreateAsync(query, sessionAttendeeParams.PageNumber, sessionAttendeeParams.PageSize);
+
+        Response.AddPaginationHeader(attendees.MetaData);
+
+        session.Attendees = attendees;
+
+        return _mapper.Map<SessionAttendeesDto>(session);
     }
+
+
 
     [GeneratedRegex("\\d+")]
     private static partial Regex MyRegex();

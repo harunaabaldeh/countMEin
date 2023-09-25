@@ -4,6 +4,7 @@ import { Session, SessionAttendees, SessionFormValues } from "../models/session"
 import { toast } from "react-toastify";
 import { router } from "../routes/Routes";
 import { Attendee } from "../models/attendance";
+import { Pagination } from "../models/pagination";
 
 axios.defaults.baseURL = import.meta.env.VITE_API_URL;
 axios.defaults.withCredentials = true;
@@ -25,8 +26,21 @@ axios.interceptors.request.use(async (config) => {
 
 axios.interceptors.response.use(async (response: AxiosResponse) => {
 
-    await sleep(2);
+    await sleep(500);
+
+    const pagination = response.headers["pagination"];
+    if (pagination) {
+      response.data = {
+        items: response.data,
+        metaData: JSON.parse(pagination),
+      };
+
+      return response as AxiosResponse<Pagination<any>>;
+    }
+
+
     return response;
+    
   }, async (error: AxiosError) => {
 
     if (!error.response)
@@ -37,7 +51,7 @@ axios.interceptors.response.use(async (response: AxiosResponse) => {
     const { data, status, config, headers } = error.response as AxiosResponse;
     switch (status) {
       case 400:
-        if (typeof data === "string") {
+        if (typeof data === "string" && !data.includes("You do not have any active session") ) {
           toast.error(data);
         }
         if (config.method === "get" && data.errors?.hasOwnProperty("id")) {
@@ -80,7 +94,7 @@ axios.interceptors.response.use(async (response: AxiosResponse) => {
 
 
 const requests = {
-  get: <T>(url: string) => axios.get<T>(url).then(responseBody),
+  get: <T>(url: string, params?: URLSearchParams) => axios.get<T>(url, {params}).then(responseBody),
   post: <T>(url: string, body: {}) => axios.post<T>(url, body).then(responseBody),
   put: <T>(url: string, body: {}) => axios.put<T>(url, body).then(responseBody),
   del: <T>(url: string) => axios.delete<T>(url).then(responseBody),
@@ -88,7 +102,7 @@ const requests = {
 
 const Attendance = {
     createAttendee: (sessionId: string, accessToken: string, linkToken: string) => requests.post<Attendee>(`/attendance/createAttendee/${sessionId}?accessToken=${accessToken}&linkToken=${linkToken}`, {}),
-    getAttendees: (sessionId: string) => requests.get<SessionAttendees>(`/attendance/sessionAttendees/${sessionId}`),
+    getAttendees: (sessionId: string, params?: URLSearchParams) => requests.get<Pagination<SessionAttendees>>(`/attendance/sessionAttendees/${sessionId}`, params),
 };
 
 const Account = {
@@ -101,7 +115,7 @@ const Account = {
 
 const Session = {
     createSession: (createSession: SessionFormValues) => requests.post<Session>('/session/createSession', createSession),
-    getSessions: () => requests.get<Session[]>('/session/getSessions'),
+    getSessions: (params?: URLSearchParams) => requests.get<Pagination<Session>>('/session/getSessions', params),
     deleteSession: (id: string) => requests.del<void>(`/session/deleteSession/${id}`),
     getSession: (id: string) => requests.get<Session>(`/session/getSession/${id}`),
     updateSession: (id: string, updateSession: SessionFormValues) => requests.put<Session>(`/session/updateSession/${id}`, updateSession),

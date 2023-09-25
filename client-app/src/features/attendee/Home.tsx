@@ -182,10 +182,13 @@ function Home() {
         {attendee ? (
           <div className="flex justify-center space-x-4 my-4">
             <button
-              onClick={() => navigate(-1)}
+              onClick={() => {
+                localStorage.removeItem("linkToken");
+                navigate(-1);
+              }}
               className="my-4 bg-slate-500 hover:bg-slate-700 text-white text-base rounded-lg py-2.5 px-5 transition-colors w-full text-[19px]"
             >
-              Save To Exit
+              Save To Exit Page
             </button>
           </div>
         ) : (

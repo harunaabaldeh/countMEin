@@ -1,13 +1,19 @@
 import { yupResolver } from "@hookform/resolvers/yup";
 import { FieldValues, useForm } from "react-hook-form";
-import { useNavigate } from "react-router-dom";
+import { useNavigate, useParams } from "react-router-dom";
 import { createSessionSchema } from "./sessionFormSchema";
-import { SessionFormValues } from "../../app/models/session";
+import { Session, SessionFormValues } from "../../app/models/session";
 import agent from "../../app/api/agent";
+import { useEffect, useState } from "react";
+import AppLoading from "../../app/components/AppLoading";
 
 function GenerateQRCodeForm() {
   const navigate = useNavigate();
+  const [loading, setLoading] = useState(false);
+  const [session, setSession] = useState<Session>();
+
   const {
+    reset,
     register,
     handleSubmit,
     watch,
@@ -15,6 +21,40 @@ function GenerateQRCodeForm() {
   } = useForm({
     resolver: yupResolver(createSessionSchema),
   });
+
+  const { id } = useParams<{ id: string }>();
+
+  useEffect(() => {
+    if (id) {
+      const getSession = async () => {
+        try {
+          setLoading(true);
+          const getSession = await agent.Session.getSession(id);
+          if (getSession) {
+            const {
+              sessionName,
+              sessionExpiresAt,
+              regenerateLinkToken,
+              linkExpiryFreequency,
+            } = getSession;
+            reset({
+              sessionName,
+              sessionExpiresAt: new Date(sessionExpiresAt)
+                .toISOString()
+                .slice(0, 16),
+              regenerateLinkToken: !regenerateLinkToken,
+              linkExpiryFreequency,
+            });
+          }
+        } catch (error) {
+          console.log(error);
+        } finally {
+          setLoading(false);
+        }
+      };
+      getSession();
+    }
+  }, [id, reset]);
 
   const onSubmit = async (data: FieldValues) => {
     const {
@@ -24,7 +64,7 @@ function GenerateQRCodeForm() {
       regenerateLinkToken,
     } = data as SessionFormValues;
 
-    let session: SessionFormValues = {
+    let formSession: SessionFormValues = {
       sessionName,
       sessionExpiresAt,
       regenerateLinkToken: !regenerateLinkToken,
@@ -32,14 +72,26 @@ function GenerateQRCodeForm() {
     };
 
     try {
-      const result = await agent.Session.createSession(session);
-      navigate("/user-profile/current-session/", {
-        state: { from: result },
-      });
+      setLoading(true);
+      if (id) {
+        const updatedSession = await agent.Session.updateSession(
+          id,
+          formSession
+        );
+        setSession(updatedSession);
+      } else {
+        const newSession = await agent.Session.createSession(formSession);
+        setSession(newSession);
+      }
     } catch (error) {
       console.log(error);
+    } finally {
+      setLoading(false);
+      navigate("/user-profile/current-session", { state: { session } });
     }
   };
+
+  if (loading) return <AppLoading />;
 
   return (
     <div className="w-full p-8 pt-0 lg:w-1/2 mx-auto ">
@@ -141,7 +193,7 @@ function GenerateQRCodeForm() {
             {isSubmitting && (
               <div className="h-5 w-5 border-t-transparent border-solid animate-spin rounded-full border-white border-4"></div>
             )}{" "}
-            <div className="ml-2"> Create Session </div>
+            <div className="ml-2">{id ? "Update" : "Create"} Session</div>
           </div>
         </button>
       </form>

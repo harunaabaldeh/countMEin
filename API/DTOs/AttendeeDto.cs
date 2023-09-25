@@ -1,5 +1,3 @@
-using API.Entities;
-
 namespace API.DTOs;
 
 public class AttendeeDto
@@ -9,7 +7,6 @@ public class AttendeeDto
     public string LastName { get; set; }
     public string Email { get; set; }
     public string MATNumber { get; set; }
-    public string Token { get; set; }
-    public string SessionName { get; set; }
+    public DateTime CreatedAt { get; set; }
 
 }
