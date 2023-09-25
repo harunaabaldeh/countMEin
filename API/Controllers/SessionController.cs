@@ -183,4 +183,28 @@ public class SessionController : BaseApiController
 
     }
 
+    [Authorize]
+    [HttpPut("updateSession/{sessionId}")]
+    public async Task<ActionResult<SessionDto>> UpdateSession(string sessionId, CreateSessionDto request)
+    {
+        var user = await _userManager.FindByEmailAsync(User.FindFirstValue(ClaimTypes.Email));
+
+        var session = await _context.Sessions
+            .Include(x => x.Host)
+            .FirstOrDefaultAsync(x => x.Id == Guid.Parse(sessionId) && x.HostId == user.Id);
+
+        if (session == null) return Unauthorized();
+
+        session.SessionName = request.SessionName;
+        session.LinkExpiryFreequency = request.LinkExpiryFreequency < 30 ? 30 : request.LinkExpiryFreequency;
+        session.RegenerateLinkToken = request.RegenerateLinkToken;
+
+        await _context.SaveChangesAsync();
+
+        await SetRefereshLinkTokenCookie(session);
+        var token = _tokenService.CreateAttendanceLinkToken(session);
+
+        return _mapper.Map<SessionDto>(session, opt => opt.Items["LinkToken"] = token);
+    }
+
 }
