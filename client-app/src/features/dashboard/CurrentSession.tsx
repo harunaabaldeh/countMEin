@@ -4,6 +4,7 @@ import { useEffect, useState } from "react";
 import { Session } from "../../app/models/session";
 import { useLocation } from "react-router-dom";
 import AppLoading from "../../app/components/AppLoading";
+import { format } from "date-fns";
 
 function CurrentSession() {
   const [session, setSession] = useState<Session | null>(null);
@@ -91,7 +92,11 @@ function CurrentSession() {
             <div className="flex items-center justify-between">
               <h2 className="text-lg font-semibold">{session.sessionName}</h2>
               <span className="text-sm text-gray-400">
-                Expires at {session.sessionExpiresAt.toString()}
+                Expires at{" "}
+                {format(
+                  new Date(session.sessionExpiresAt),
+                  "MMMM, EEEE do, h:mm a"
+                )}
               </span>
             </div>
           </>
